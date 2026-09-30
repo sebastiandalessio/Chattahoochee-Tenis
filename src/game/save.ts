@@ -3,6 +3,7 @@
 // archivo abierto con doble clic en algunos navegadores), el juego sigue andando sin guardar.
 
 import { CHARACTER_ORDER, type CharacterId } from './characters';
+import type { KeyOptions } from '../input/keyboard';
 
 export interface Options {
   difficulty: 0 | 1 | 2;
@@ -10,6 +11,8 @@ export interface Options {
   /** 0..1 */
   music: number;
   sfx: number;
+  /** Teclas cambiadas en Opciones (las que no están, van por defecto). */
+  keys?: KeyOptions;
 }
 
 export interface SaveData {
@@ -73,11 +76,28 @@ export function loadSave(kv: KV | null = browserKV()): SaveData {
         games: [2, 4, 6].includes(o.games) ? o.games : 4,
         music: clamp01(o.music),
         sfx: clamp01(o.sfx),
+        keys: cleanKeys(o.keys),
       },
     };
   } catch {
     return base;
   }
+}
+
+function cleanKeys(k: unknown): KeyOptions | undefined {
+  if (!k || typeof k !== 'object') return undefined;
+  const out: KeyOptions = {};
+  for (const who of ['p1', 'a', 'b'] as const) {
+    const src = (k as Record<string, unknown>)[who];
+    if (!src || typeof src !== 'object') continue;
+    const acts: Record<string, string> = {};
+    for (const act of ['hit', 'slice', 'special', 'taunt']) {
+      const v = (src as Record<string, unknown>)[act];
+      if (typeof v === 'string' && v.length < 24) acts[act] = v;
+    }
+    out[who] = acts;
+  }
+  return out;
 }
 
 function clamp01(v: unknown): number {

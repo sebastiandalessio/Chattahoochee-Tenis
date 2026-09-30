@@ -2,6 +2,7 @@
 // Abajo, un "consejo" de pantalla de carga (falso, como la pantalla de carga).
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { clasicoOf } from '../game/characters';
 import type { TowerCtx } from '../game/flow';
 import { keyboard } from '../input/keyboard';
@@ -34,6 +35,7 @@ export class VsScene extends Phaser.Scene {
     const run = this.ctx.run;
     const fight = run.fights[run.step];
     const clasico = clasicoOf(run.player, fight.rival);
+    music.play(clasico ? 'clasico' : 'tower');
     const g = this.add.graphics();
     // Fondo partido en diagonal con los colores de cada lado (o de los clubes en un clásico).
     const [ca, cb] = clasico ? CLUB_COLORS[clasico] : [0x1c2a4a, 0x4a1c2a];

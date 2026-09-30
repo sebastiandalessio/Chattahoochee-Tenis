@@ -1,39 +1,7 @@
-// Efectos de sonido procedurales con Web Audio (versión mínima; en el hito 6 llega el chiptune completo).
+// Efectos de sonido procedurales con Web Audio, estilo sfxr.
 
-let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
-let volume = 0.6;
-
-function ac(): AudioContext | null {
-  if (!ctx) {
-    try {
-      ctx = new AudioContext();
-      master = ctx.createGain();
-      master.gain.value = volume;
-      master.connect(ctx.destination);
-    } catch {
-      return null;
-    }
-  }
-  if (ctx.state === 'suspended') void ctx.resume();
-  return ctx;
-}
-
-/** El navegador solo deja sonar audio después de una tecla o clic. */
-export function unlockAudio(): void {
-  const once = () => {
-    ac();
-    window.removeEventListener('keydown', once);
-    window.removeEventListener('pointerdown', once);
-  };
-  window.addEventListener('keydown', once);
-  window.addEventListener('pointerdown', once);
-}
-
-export function setSfxVolume(v: number): void {
-  volume = v;
-  if (master) master.gain.value = v;
-}
+import { ac, sfxBus } from './engine';
+export { setSfxVolume, unlockAudio } from './engine';
 
 let noiseBuf: AudioBuffer | null = null;
 function noise(c: AudioContext): AudioBuffer {
@@ -47,6 +15,7 @@ function noise(c: AudioContext): AudioBuffer {
 
 function tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0): void {
   const c = ac();
+  const master = sfxBus();
   if (!c || !master) return;
   const t = c.currentTime + delay;
   const o = c.createOscillator();
@@ -63,6 +32,7 @@ function tone(freq: number, dur: number, type: OscillatorType, vol: number, slid
 
 function burst(dur: number, vol: number, freq: number, q = 1, delay = 0): void {
   const c = ac();
+  const master = sfxBus();
   if (!c || !master) return;
   const t = c.currentTime + delay;
   const src = c.createBufferSource();
@@ -78,6 +48,20 @@ function burst(dur: number, vol: number, freq: number, q = 1, delay = 0): void {
   src.start(t);
   src.stop(t + dur + 0.02);
 }
+
+/** Voces de cada uno: tono, largo de cada bip, separación y forma de onda. */
+const VOICES: Record<string, { freq: number; len: number; gap: number; wave: OscillatorType; jump: boolean; slide?: number }> = {
+  elRosco: { freq: 200, len: 0.07, gap: 0.09, wave: 'square', jump: true },
+  elSeba: { freq: 560, len: 0.04, gap: 0.05, wave: 'square', jump: true },
+  trueTincho: { freq: 230, len: 0.08, gap: 0.11, wave: 'triangle', jump: false },
+  volpi: { freq: 380, len: 0.05, gap: 0.07, wave: 'square', jump: true, slide: 1.2 },
+  elVikingo: { freq: 115, len: 0.09, gap: 0.11, wave: 'sawtooth', jump: true },
+  angelito: { freq: 470, len: 0.05, gap: 0.06, wave: 'square', jump: true },
+  donGanso: { freq: 300, len: 0.08, gap: 0.1, wave: 'sawtooth', jump: false, slide: 0.7 },
+  betty: { freq: 880, len: 0.05, gap: 0.08, wave: 'square', jump: false },
+  mabel: { freq: 1250, len: 0.04, gap: 0.09, wave: 'sine', jump: false },
+  narrador: { freq: 330, len: 0.04, gap: 0.07, wave: 'triangle', jump: true },
+};
 
 export const sfx = {
   hit(power = 0): void {
@@ -173,6 +157,18 @@ export const sfx = {
     tone(160, 0.08, 'sine', 0.2, 80);
   },
   /** La cargada de cada uno tiene su sonidito. */
+  /**
+   * "Voz" de un personaje cuando habla en un globo, como en los juegos de rol viejos: una tira de
+   * bips con el tono de cada uno (grave el Vikingo, agudo y rápido Seba, monótono Tincho...).
+   */
+  voice(who: string, text: string): void {
+    const v = VOICES[who] ?? VOICES.narrador;
+    const n = Math.max(2, Math.min(10, Math.ceil(text.replace(/s/g, '').length / 5)));
+    for (let i = 0; i < n; i++) {
+      const f = v.freq * (1 + (v.jump ? ((i * 7919) % 5) / 10 - 0.2 : 0));
+      tone(f, v.len, v.wave, 0.05, v.slide ? f * v.slide : undefined, i * v.gap);
+    }
+  },
   taunt(who: string): void {
     if (who === 'elSeba') {
       // ¡HEEEY! Voz sintetizada: una vocal que sube.

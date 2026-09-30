@@ -178,6 +178,91 @@ try {
     console.log('  terminó en', last, 'en', Math.round((Date.now() - t0) / 1000), 's');
   }
 
+  // ------------------------------------------------------------ hito 6: splash, título, menús, práctica, créditos
+  if (which === 'all' || which === 'menus') {
+    console.log('Menús y pantallas del hito 6');
+    const active = () =>
+      page.evaluate(() => {
+        const g = window.__game;
+        return g ? g.scene.getScenes(true).map((x) => x.sys.settings.key).join(',') : '';
+      });
+    await page.goto(base);
+    await sleep(900);
+    await shot('40-splash');
+    await sleep(2800);
+    await shot('40-splash-ganso');
+    await page.keyboard.press('Enter');
+    await sleep(2600);
+    await shot('41-titulo');
+    console.log('   título:', await active());
+    await page.keyboard.press('Enter');
+    await sleep(900);
+    await shot('42-menu');
+    console.log('   menú:', await active());
+    const menuGo = async (downs) => {
+      await page.goto(`${base}?menu=1`);
+      await sleep(700);
+      for (let i = 0; i < downs; i++) {
+        await page.keyboard.press('ArrowDown');
+        await sleep(120);
+      }
+      await page.keyboard.press('Enter');
+      await sleep(900);
+    };
+    await menuGo(1);
+    await shot('43-amistoso');
+    console.log('   amistoso:', await active());
+    await menuGo(3);
+    await shot('44-opciones');
+    await page.keyboard.press('ArrowRight');
+    await sleep(150);
+    await shot('44-opciones-cambio');
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press('ArrowDown');
+      await sleep(120);
+    }
+    await page.keyboard.press('Enter');
+    await sleep(800);
+    await shot('45-teclas');
+    await page.keyboard.press('ArrowDown');
+    await sleep(120);
+    await page.keyboard.press('Enter');
+    await sleep(200);
+    await page.keyboard.press('KeyJ');
+    await sleep(300);
+    await shot('45-teclas-cambiada');
+    const keys = await page.evaluate(() => JSON.parse(localStorage.getItem('chattahoochee-tenis-v1') || '{}').options?.keys);
+    console.log('   teclas guardadas:', JSON.stringify(keys));
+    await menuGo(4);
+    for (let i = 0; i < 6; i++) {
+      await shot(`46-como-jugar-${i + 1}`);
+      await page.keyboard.press('ArrowRight');
+      await sleep(300);
+    }
+    await menuGo(5);
+    await sleep(3000);
+    await shot('47-creditos');
+    await page.keyboard.down('Enter');
+    await sleep(3500);
+    await page.keyboard.up('Enter');
+    await sleep(1500);
+    await shot('47-casamiento');
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('Enter');
+      await sleep(700);
+    }
+    await sleep(1200);
+    await shot('47-casamiento-fin');
+    console.log('   créditos:', await active());
+    // Práctica con Betty: la CPU no juega por vos, así que se mira que Betty tire y cuente.
+    await menuGo(2);
+    await page.keyboard.press('Enter');
+    await sleep(6000);
+    await shot('48-practica');
+    const st = await page.evaluate(() => window.__cht?.match.practiceStats);
+    console.log('   práctica:', JSON.stringify(st));
+  }
+
   // ------------------------------------------------------------ sedes y eventos (npm run playtest -- sedes)
   if (which === 'sedes') {
     const only = process.argv[3];
@@ -262,10 +347,10 @@ try {
 
   // ------------------------------------------------------------ pantalla final jugando vos (desde el menú)
   if (which === 'all' || which === 'end1p') {
-    console.log('Pantalla final en 1 jugador, entrando desde el menú');
+    console.log('Pantalla final en 1 jugador, entrando desde el amistoso');
     const scenes = () =>
       page.evaluate(() => window.__cht?.scene.game.scene.getScenes(true).map((x) => x.sys.settings.key));
-    await page.goto(base);
+    await page.goto(`${base}?amistoso=1`);
     await sleep(800);
     for (let round = 0; round < 2; round++) {
       // En el menú: ir a "Duración", elegir 2 games y arrancar.
@@ -424,8 +509,8 @@ try {
 
   // ------------------------------------------------------------ menú
   if (which === 'all' || which === 'menu') {
-    console.log('Menú de prueba');
-    await page.goto(base);
+    console.log('Amistoso');
+    await page.goto(`${base}?amistoso=1`);
     await sleep(800);
     await shot('01-menu');
   }

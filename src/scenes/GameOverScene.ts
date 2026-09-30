@@ -2,6 +2,7 @@
 // Continuar en la torre repite el escalón (con chicana nueva); en el Boss, el relevo arranca de cero.
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { flowMode } from '../game/autoplay';
 import { drawGanso, type GansoFrame } from '../art/ganso';
 import { newRelay } from '../game/bossRelay';
@@ -43,6 +44,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(): void {
     enter(this, 400);
+    music.play('defeat');
     const g = this.add.graphics();
     g.fillStyle(0x0b0a10).fillRect(0, 0, 640, 360);
     for (let y = 0; y < 360; y += 3) g.fillStyle(0x140f18).fillRect(0, y, 640, 1);
@@ -86,7 +88,7 @@ export class GameOverScene extends Phaser.Scene {
       const boss: BossCtx = { ...b, run: continueRun(b.run), relay: newRelay(rivals), recipe: [false, false, false], fresh: false };
       const setup: Partial<MatchSetup> = { ...flowMode(), games: o.games, difficulty: o.difficulty, venue: 'chattahoochee', boss };
       goTo(this, 'match', setup);
-    } else goTo(this, 'testMenu');
+    } else goTo(this, 'menu');
   }
 
   update(_t: number, deltaMs: number): void {
@@ -99,7 +101,7 @@ export class GameOverScene extends Phaser.Scene {
         this.tick();
       } else {
         this.done = true;
-        goTo(this, 'testMenu', undefined, 600);
+        goTo(this, 'menu', undefined, 600);
       }
     }
     if (this.count > 0 && keyboard.anyPressed(CONFIRM)) {
@@ -107,7 +109,7 @@ export class GameOverScene extends Phaser.Scene {
       this.continueRun();
     } else if (keyboard.anyPressed(BACK)) {
       this.done = true;
-      goTo(this, 'testMenu');
+      goTo(this, 'menu');
     }
     keyboard.endFrame();
   }

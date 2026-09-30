@@ -2,6 +2,7 @@
 // cut-in de los especiales, Betty, Mabel, la minicargadora, la obra, el sello EXENTO, etc.
 
 import Phaser from 'phaser';
+import { KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B, keyLabel } from '../input/keyboard';
 import { drawBetty, drawCone, drawFriedBall, drawLoader, drawMabel, drawPothole, drawSign } from '../art/objects';
 import { sfx } from '../audio/sfx';
 import { other, type Side } from '../logic/scoring';
@@ -32,6 +33,8 @@ export interface FxOptions {
   textures: [CharacterTextures, CharacterTextures];
   humans: [boolean, boolean];
   twoPlayers: boolean;
+  /** Lado sin receta en el HUD (Betty en la práctica). */
+  hideSide?: Side;
   say: (text: string, ms?: number) => void;
   call: (text: string, ms?: number) => void;
 }
@@ -243,6 +246,7 @@ export class MystiqueFx {
   private bubbleOver(side: Side, text: string, ms: number, _big = false): void {
     const h = this.headOf(side);
     this.bubbles[side].show(text, h.x, h.y, ms, true);
+    sfx.voice(this.o.chars[side], text);
   }
 
   private showHelper(side: Side, kind: 'betty' | 'mabel'): void {
@@ -466,6 +470,11 @@ export class MystiqueFx {
     g.clear();
     for (let row = 0; row < 2; row++) {
       const side = (row === 0 ? 1 : 0) as Side;
+      if (side === this.o.hideSide) {
+        for (const t of this.chipText[row]) t.setText('');
+        this.readyText[row].setText('');
+        continue;
+      }
       const who = this.o.chars[side];
       const rules = RULES[who];
       const st = this.m.myst.states[side];
@@ -487,7 +496,8 @@ export class MystiqueFx {
       const blink = Math.floor(this.m.time * 4) % 2 === 0;
       let text = '';
       if (ready) {
-        const key = this.o.humans[side] ? (this.o.twoPlayers ? T.hud.specialKey2P[side] : T.hud.specialKey1P) : '';
+        const map = this.o.twoPlayers ? (side === 0 ? KEYMAP_2P_A : KEYMAP_2P_B) : KEYMAP_1P;
+        const key = this.o.humans[side] ? T.hud.specialKey(keyLabel(map.special[0])) : '';
         text = blink ? `${T.hud.specialReady} ${key}` : '';
       } else if (used) text = '';
       this.readyText[row].setText(text);

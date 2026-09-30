@@ -1,6 +1,7 @@
 // Victoria contra el Boss: los cinco levantan en andas al campeón... y se tiran todos al río.
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { splash } from '../art/props';
 import { bossRivals } from '../game/tower';
 import type { BossCtx } from '../game/flow';
@@ -36,6 +37,7 @@ export class BossWinScene extends Phaser.Scene {
 
   create(): void {
     enter(this, 400);
+    music.play('victory');
     riverScene(this, () => {}, 640, 360, HORIZON, SHORE);
     const run = this.boss.run;
     const rivals = bossRivals(run);

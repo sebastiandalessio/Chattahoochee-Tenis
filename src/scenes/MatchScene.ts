@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { horizontalSpeed } from '../logic/physics';
 import { createRng } from '../logic/rng';
 import { describeScore, other, pointLabel, type ScoreEvent, type Side } from '../logic/scoring';
-import { keyboard, KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B } from '../input/keyboard';
+import { keyboard, keyNames, KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B } from '../input/keyboard';
 import { CpuBrain } from '../sim/ai';
 import { personalityFor } from '../sim/personalities';
 import { emptyInput, type PlayerInput } from '../sim/input';
@@ -21,6 +21,10 @@ import { currentRival, relayGame } from '../game/bossRelay';
 import type { BossCtx } from '../game/flow';
 import { drawCan } from '../art/cutsceneArt';
 import { CONFIRM, artTexture, goTo } from '../ui/screens';
+import { music } from '../audio/music';
+import { setMusicDuck } from '../audio/engine';
+import type { SongId } from '../audio/songs';
+import { clasicoOf } from '../game/characters';
 import { RULES } from '../sim/rules';
 import { CHARACTERS, type CharacterId } from '../game/characters';
 import { DEFAULT_SETUP, difficultyParams, resolveChars, resolveVenue, type MatchSetup } from '../game/setup';
@@ -53,6 +57,26 @@ interface Particle {
   vy: number;
   life: number;
   max: number;
+}
+
+/** Betty, la lanzapelotas, en la práctica: no se mueve, solo tira. */
+class BettyView implements PlayerView {
+  private img: Phaser.GameObjects.Image;
+  hidden = false;
+
+  constructor(scene: Phaser.Scene) {
+    ensureMystiqueTextures(scene);
+    this.img = scene.add.image(0, 0, 'betty').setOrigin(0.5, 1).setScale(1.5);
+  }
+
+  update(p: PlayerSim): void {
+    const pos = project(p.x, p.y);
+    this.img.setPosition(Math.round(pos.sx), Math.round(pos.sy)).setDepth(pos.sy).setVisible(!this.hidden);
+  }
+
+  destroy(): void {
+    this.img.destroy();
+  }
 }
 
 export class MatchScene extends Phaser.Scene {
@@ -121,6 +145,7 @@ export class MatchScene extends Phaser.Scene {
   create(): void {
     const s = this.setup;
     const diff = difficultyParams(s.difficulty);
+    const practice = s.mode === 'practice';
     const human0 = s.mode !== 'demo';
     const human1 = s.mode === '2p';
     const seed = s.seed ?? Math.floor(Math.random() * 1e9);
@@ -141,10 +166,16 @@ export class MatchScene extends Phaser.Scene {
     const personalities = [personalityFor(chars[0], aiProfile), personalityFor(chars[1], aiProfile)];
     // Ventajas: chicana ganada o perdida, y los rivales del Boss con el primer paso de la receta.
     const extra: [Partial<PlayerSetup>, Partial<PlayerSetup>] = [{}, {}];
-    if (tower?.duel === 'won') {
-      extra[0].startRecipe = [true, false, false];
-      extra[1].firstGameErrorMul = 1.3;
-    } else if (tower?.duel === 'lost') extra[1].startRecipe = [true, false, false];
+    // duels[s]: cómo le fue al jugador s contestando la chicana del otro.
+    ([0, 1] as Side[]).forEach((me) => {
+      const r = s.duels?.[me];
+      const them = me === 0 ? 1 : 0;
+      if (r === 'won') {
+        extra[me].startRecipe = [true, false, false];
+        extra[them].firstGameErrorMul = 1.3;
+      } else if (r === 'lost') extra[them].startRecipe = [true, false, false];
+    });
+    void tower;
     if (boss) {
       extra[0].startRecipe = boss.recipe;
       extra[1].startRecipe = [true, false, false];
@@ -160,22 +191,24 @@ export class MatchScene extends Phaser.Scene {
       serveMeterHalfPeriod: human ? diff.humanMeterHalf : 0.42,
       ...extra[side],
     });
-    const venue = boss ? 'chattahoochee' : resolveVenue(s.venue, () => rng.next());
+    const venue = boss ? 'chattahoochee' : practice ? 'breckenridge' : resolveVenue(s.venue, () => rng.next());
     this.match = new Match({
       // Relevo del Boss: cada game es un mini partido, con punto de oro después de 3 iguales.
       rules: boss ? { gamesPerSet: 1, goldenPointAfterDeuces: 3 } : { gamesPerSet: s.games },
       venue,
+      practice,
+      venueEvents: !practice,
       players: [
         { name: this.names[0], ...setupFor(human0, chars[0], 0) },
         { name: this.names[1], ...setupFor(human1, chars[1], 1) },
       ],
       seed,
       // En el relevo el saque alterna game a game, como en un partido normal.
-      firstServer: boss ? (boss.relay.games % 2 === 0 ? 0 : 1) : seed % 2 === 0 ? 0 : 1,
+      firstServer: practice ? 1 : boss ? (boss.relay.games % 2 === 0 ? 0 : 1) : seed % 2 === 0 ? 0 : 1,
     });
     this.brains = [
       human0 ? null : new CpuBrain(0, personalities[0], rng),
-      human1 ? null : new CpuBrain(1, personalities[1], rng),
+      human1 || practice ? null : new CpuBrain(1, personalities[1], rng),
     ];
 
     // Sede: escenografía, Don Ganso en su silla y los extras.
@@ -196,7 +229,7 @@ export class MatchScene extends Phaser.Scene {
       const label = tag ? pxText(this, 0, 0, tag, { outline: true, color: side === 0 ? UI.cyan : UI.red }) : null;
       const tex = ensureCharacterTextures(this, chars[side], outfits[side]);
       texs.push(tex);
-      this.views.push(new SpritePlayerView(this, side, tex, label));
+      this.views.push(practice && side === 1 ? new BettyView(this) : new SpritePlayerView(this, side, tex, label));
     }
     this.chars = chars;
 
@@ -215,14 +248,29 @@ export class MatchScene extends Phaser.Scene {
       textures: [texs[0], texs[1]],
       humans: [human0, human1],
       twoPlayers: s.mode === '2p',
+      hideSide: practice ? 1 : undefined,
       say: (t, ms) => this.say(t, ms),
       call: (t, ms) => this.call(t, ms),
     });
 
     if (boss) this.setupBoss(boss);
-    if (chars.includes('donGanso')) this.time.delayedCall(1200, () => this.say(T.mystique.primo, 3600));
+    if (chars.includes('donGanso') && !practice) this.time.delayedCall(1200, () => this.say(T.mystique.primo, 3600));
+
+    // Música: la de la sede (o la del Boss, o la de la práctica). En los clásicos, primero el cantito.
+    setMusicDuck(0.55);
+    const song: SongId = practice ? 'practice' : boss ? 'boss' : venue;
+    const clasico = !practice && !boss ? clasicoOf(chars[0], chars[1]) : null;
+    if (clasico) {
+      music.play('clasico');
+      this.time.delayedCall(700, () => banner(this, T.vs.clasico[clasico], UI.gold, 110, 1800));
+      this.time.delayedCall(9000, () => {
+        if (this.match.phase !== 'matchOver') music.play(song);
+      });
+    } else music.play(song);
+    if (practice) this.setupPractice();
 
     keyboard.install();
+    keyboard.setPadMode(s.mode === '2p' ? '2p' : '1p');
     (window as unknown as { __cht: unknown }).__cht = { scene: this, match: this.match };
     this.handleEvents(this.match.drainEvents());
   }
@@ -347,7 +395,7 @@ export class MatchScene extends Phaser.Scene {
       this,
       320,
       347,
-      this.setup.mode === '2p' ? T.hud.controls2P : T.hud.controls1P,
+      this.setup.mode === '2p' ? T.hud.controls2P(keyNames(KEYMAP_2P_A), keyNames(KEYMAP_2P_B)) : T.hud.controls1P(keyNames(KEYMAP_1P)),
       { outline: true, color: UI.dim },
     )
       .setOrigin(0.5, 0)
@@ -449,6 +497,7 @@ export class MatchScene extends Phaser.Scene {
     for (const side of [0, 1] as Side[]) {
       const brain = this.brains[side];
       if (brain) inputs[side] = brain.think(m, STEP);
+      else if (this.setup.mode === 'practice' && side === 1) inputs[side] = emptyInput();
       else if (this.setup.mode === '2p') inputs[side] = keyboard.readPlayer(side === 0 ? KEYMAP_2P_A : KEYMAP_2P_B);
       else inputs[side] = keyboard.readPlayer(KEYMAP_1P);
     }
@@ -464,7 +513,7 @@ export class MatchScene extends Phaser.Scene {
         return;
       }
       if (keyboard.anyPressed(['Enter', 'Space', 'KeyZ'])) this.scene.restart(this.setup);
-      else if (keyboard.wasPressed('Escape')) this.scene.start('testMenu', this.setup);
+      else if (keyboard.wasPressed('Escape')) goTo(this, 'testMenu', this.setup);
       return;
     }
     // Con el partido terminado no hay pausa: Enter y Esc son para la pantalla final.
@@ -480,7 +529,7 @@ export class MatchScene extends Phaser.Scene {
     else if (keyboard.anyPressed(['Enter', 'KeyZ', 'KeyF', 'KeyK', 'Space'])) {
       if (this.pauseSel === 0) this.closePause();
       else if (this.pauseSel === 1) this.scene.restart(this.setup);
-      else this.scene.start('testMenu', this.setup);
+      else this.quitToMenu();
     }
   }
 
@@ -566,7 +615,19 @@ export class MatchScene extends Phaser.Scene {
           break;
         case 'matchOver':
           if (this.setup.boss) this.time.delayedCall(900, () => this.bossGameEnd(e.winner));
-          else this.time.delayedCall(1400, () => this.showEnd(e.winner));
+          else {
+            // Fanfarria o bajada triste, según quién ganó (en 2P o mirando, siempre fanfarria).
+            const lost = this.setup.mode === 'cpu' && e.winner === 1;
+            music.play(lost ? 'defeat' : 'victory');
+            this.time.delayedCall(1400, () => this.showEnd(e.winner));
+          }
+          break;
+        case 'feed':
+          sfx.betty();
+          this.hud.kmh.setText(T.hud.kmh(e.kmh));
+          break;
+        case 'practice':
+          this.onPractice(e);
           break;
         default:
           break;
@@ -853,6 +914,45 @@ export class MatchScene extends Phaser.Scene {
     this.paused = false;
     for (const o of this.pauseUi) o.destroy();
     this.pauseUi = [];
+  }
+
+  /** Salir desde la pausa: el amistoso vuelve a su pantalla; la torre, el Boss y la práctica, al menú. */
+  private quitToMenu(): void {
+    const s = this.setup;
+    if (s.tower || s.boss || s.mode === 'practice') goTo(this, 'menu');
+    else goTo(this, 'testMenu', s);
+  }
+
+  // ------------------------------------------------------------------ práctica con Betty
+
+  private practiceText: Phaser.GameObjects.BitmapText | null = null;
+
+  private setupPractice(): void {
+    const h = this.hud;
+    for (const t of [...h.names, ...h.games, ...h.points]) t.setVisible(false);
+    h.board.setVisible(false);
+    const g = this.add.graphics().setDepth(9000);
+    drawBox(g, 3, 3, 300, 18, 0x14131c, 0x3a3850, 0.85);
+    this.practiceText = pxText(this, 10, 7, T.practice.stats(0, 0, 0), { outline: true, color: UI.gold }).setDepth(9001);
+    h.help.setText(T.hud.controls1P(keyNames(KEYMAP_1P)));
+    this.time.delayedCall(600, () => this.bettySays(T.practice.hello, 3600));
+  }
+
+  private bettySays(text: string, ms = 2600): void {
+    this.commentary.say('BETTY', text, ms);
+    sfx.voice('betty', text);
+  }
+
+  private onPractice(e: Extract<MatchEvent, { type: 'practice' }>): void {
+    this.practiceText?.setText(T.practice.stats(e.returns, e.streak, e.best));
+    if (e.newProgram) {
+      this.bettySays(T.practice.programs[e.newProgram], 2400);
+      return;
+    }
+    if (e.good && e.streak > 0 && e.streak % 5 === 0) this.bettySays(T.practice.streak(e.streak));
+    else if (e.good && Math.random() < 0.25) this.bettySays(pick(T.practice.good));
+    else if (!e.good && Math.random() < 0.4) this.bettySays(pick(T.practice.miss));
+    else if (Math.random() < 0.08) this.bettySays(pick(T.practice.mabel));
   }
 
   /** Torre: ganó → sube un escalón; perdió → ¿CONTINUAR? */

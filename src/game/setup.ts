@@ -5,7 +5,7 @@ import { VENUE_ORDER, type VenueId } from '../sim/venues';
 import { CHARACTER_ORDER, type CharacterId } from './characters';
 import type { BossCtx, DuelResult, TowerCtx } from './flow';
 
-export type Mode = 'cpu' | '2p' | 'demo';
+export type Mode = 'cpu' | '2p' | 'demo' | 'practice';
 export type Difficulty = 0 | 1 | 2;
 export type CharacterPick = CharacterId | 'azar';
 export type VenuePick = VenueId | 'sorteo';
@@ -23,8 +23,10 @@ export interface MatchSetup {
   seed?: number;
   /** Trajes (0 = el principal). Si no se dice, el de arriba usa el alternativo en el espejo. */
   outfits?: [number, number];
-  /** Partido de la torre (con el resultado del duelo de chicanas). */
-  tower?: { ctx: TowerCtx; duel: DuelResult };
+  /** Partido de la torre. */
+  tower?: { ctx: TowerCtx };
+  /** Resultado de los duelos de chicanas: duels[s] = cómo le fue al jugador s contestando. */
+  duels?: [DuelResult, DuelResult];
   /** Un game del relevo del Boss. */
   boss?: BossCtx;
 }

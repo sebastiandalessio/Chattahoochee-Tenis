@@ -104,3 +104,31 @@ Cuando el documento original dejaba algo abierto, elegimos la opción más diver
   - Con partidos simulados: dobles faltas de la CPU = 0 por partido, primer saque adentro entre 77% (Seba) y 92–95% (Volpi y Rosco).
 - **Balance:** Tincho ganaba el 83% de los partidos simulados y Rosco el 20%; se ajustó el error de la CPU de los dos. Se miden con `TUNE=1 npx vitest run scripts/mystats` y `scripts/servestats` (y `humanserve` para el saque con timing humano).
 - **Pruebas:** `npm run playtest -- pantallas` saca capturas de todas las pantallas nuevas (selección, torre, VS, clásico, chicanas, game over, Boss, festejo y los 7 finales). `npm run playtest -- torre` juega una torre entera en automático, de punta a punta. Atajos por dirección para probar: `?select=1`, `?tower=volpi&step=2`, `?duel=volpi`, `?boss=volpi`, `?bossmatch=volpi`, `?ending=volpi` (con `&auto=1&speed=8` la CPU juega por vos).
+
+## Hito 6 – Música, sonido, menús y pulido
+
+- **Música chiptune propia, generada en el navegador:** 14 temas originales (título, menú, selección, torre, uno por cada sede, Boss, práctica, clásico, victoria, derrota y casamiento).
+  - Cada tema tiene la melodía escrita a mano, nota por nota. El bajo, el arpegio y la batería salen de los acordes y de un "estilo" (rock, marcha, shuffle bluesero para el Chattahoochee, bossa para St. Regis).
+  - Suena con ondas cuadradas de distintos anchos, triángulo y ruido, como las consolas de 8/16 bits.
+  - Un test controla que cada compás cierre justo.
+- **Efectos y voces:** los personajes "hablan" con bips propios cuando dicen algo, como en los juegos de rol viejos: grave el Vikingo, agudo y rápido Seba, monótono Tincho, robótica Betty, y el ¡DING! de Mabel. Durante el partido la música baja un poco para que se escuchen los golpes.
+- **Música y efectos tienen volumen separado** (en Opciones). El navegador no deja sonar nada hasta la primera tecla: por eso el juego arranca con el splash, que se saltea con cualquier tecla.
+- **Flujo de pantallas:** splash ("Chattahoochees Games presenta...", con Don Ganso), título con el logo animado ("APRETÁ ENTER (o cualquier tecla, no somos exigentes)") y menú principal: Torre, Amistoso, Práctica con Betty, Opciones, Cómo jugar y Créditos. Don Ganso describe cada opción, estilo aventura gráfica.
+- **Amistoso:** el viejo menú de prueba, ordenado.
+  - Modo: vos contra la CPU, 2 jugadores o CPU contra CPU.
+  - También se eligen duración, dificultad, sede, jugadores y **chicanas opcionales**. En 2 jugadores hay una ronda para cada uno, cada cual con sus teclas.
+  - Se arregló que el texto se saliera del recuadro.
+- **Práctica con Betty:**
+  - Elegís personaje y Betty te tira pelotas sin tanteador. Cuenta devoluciones, racha y mejor racha.
+  - Cada 6 pelotas cambia de "programa": normal, abiertas, dejaditas, profundas, globos y sorpresa.
+  - Tiene frases propias: "ERROR DETECTADO. RECALIBRANDO HUMANO.".
+  - La mística funciona, así que sirve para practicar las recetas.
+- **Opciones:** duración, dificultad, volumen de música y de efectos, teclas, y borrar progreso (pide confirmación). Todo queda guardado.
+- **Reasignar teclas:** se pueden cambiar las teclas de golpe, slice, especial y cargada de cada uno (1 jugador, J1 y J2). Moverse sigue siendo con flechas/WASD. Si elegís una tecla que ya usaba otra acción, se intercambian. Los textos de ayuda muestran las teclas elegidas.
+- **Joystick:** uno por jugador.
+  - En el partido: A golpe, B slice, X especial, Y (o RB) cargada, START pausa.
+  - En los menús: cruz o palanca para moverse, A para confirmar, B para volver.
+  - Se lee como si fueran teclas, así que sirve en todas las pantallas.
+- **Cómo jugar:** 6 páginas (controles, el golpe, saque y aire, mística, las recetas de los seis y torre y chicanas).
+- **Créditos:** los cargos de cada uno ("Dirección de dejaditas: EL ROSCO", "Catering: MABEL"...) y el **casamiento de Betty y Mabel** a orillas del Chattahoochee, con Don Ganso de oficiante desde su silla de umpire, los seis de invitados y fuegos artificiales de pelotas de tenis. Después de ganar la torre, el final lleva a los créditos.
+- **Clásicos en el partido:** además del cartel en la pantalla VS, el partido empieza con el cantito de tribuna y después pasa a la música de la sede.

@@ -2,6 +2,7 @@
 // con signos de pregunta). Después de cada victoria, el retrato del jugador sube un escalón.
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { BOSS_STEP, bossRivals, isBossStep } from '../game/tower';
 import { newRelay } from '../game/bossRelay';
 import type { BossCtx, TowerCtx } from '../game/flow';
@@ -46,6 +47,7 @@ export class TowerScene extends Phaser.Scene {
 
   create(): void {
     enter(this);
+    music.play('tower');
     const run = this.ctx.run;
     const g = this.add.graphics();
     skyBands(g, [0x1a1030, 0x2a1840, 0x40204a, 0x5c2a48, 0x7a3a40], 0, 360);
@@ -147,7 +149,7 @@ export class TowerScene extends Phaser.Scene {
 
   update(): void {
     if (this.confirmQuit) {
-      if (keyboard.anyPressed(CONFIRM)) goTo(this, 'testMenu');
+      if (keyboard.anyPressed(CONFIRM)) goTo(this, 'menu');
       else if (keyboard.anyPressed(BACK)) {
         this.confirmQuit = false;
         this.quitText?.destroy();

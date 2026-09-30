@@ -1,6 +1,14 @@
 // TODOS los textos del juego viven acá, para poder editarlos fácil.
 // Español rioplatense, con voseo. Cortos y punzantes: se leen jugando.
 
+/** Nombres de las teclas de acción (para los textos de ayuda). */
+export interface KeyNames {
+  hit: string;
+  slice: string;
+  special: string;
+  taunt: string;
+}
+
 export const T = {
   title: 'CHATTAHOOCHEE TENIS',
 
@@ -43,11 +51,11 @@ export const T = {
     serve: 'SAQUE',
     kmh: (n: number) => `${n} km/h`,
     secondServe: '2do saque',
-    controls1P: 'Flechas: mover · Z golpe (mantené=fuerte) · X slice (mantené=globo) · C especial · V cargada',
-    controls2P: 'J1: WASD F G H(esp) R(carg) · J2: flechas K L Ñ(esp) I(carg) · Esc/Enter pausa',
+    controls1P: (k: KeyNames) => `Flechas: mover · ${k.hit} golpe (mantené=fuerte) · ${k.slice} slice (mantené=globo) · ${k.special} especial · ${k.taunt} cargada`,
+    controls2P: (a: KeyNames, b: KeyNames) =>
+      `J1: WASD ${a.hit} ${a.slice} ${a.special}(esp) ${a.taunt}(carg) · J2: flechas ${b.hit} ${b.slice} ${b.special}(esp) ${b.taunt}(carg) · Esc/Enter pausa`,
     specialReady: '¡ESPECIAL LISTO!',
-    specialKey1P: '(C)',
-    specialKey2P: ['(H)', '(Ñ)'],
+    specialKey: (k: string) => `(${k})`,
     replay: 'REPETICIÓN',
     serveHint: 'Z: tirá la pelota · Z otra vez: pegale',
     serveHint2P: (hit: string) => `${hit}: tirá la pelota · ${hit} otra vez: pegale`,
@@ -622,7 +630,200 @@ export const T = {
     outfit: (name: string, outfit: string) => `¡TRAJE DESBLOQUEADO! ${name}: ${outfit}`,
     ganso: '¡DON GANSO JUGABLE DESBLOQUEADO! Ganaste la torre con los seis. Ahora el umpire baja a la cancha.',
     towers: (n: number) => `Torres ganadas: ${n} de 6`,
-    end: 'ENTER: volver al menú',
+    end: 'ENTER: créditos',
+  },
+
+  // ---------------------------------------------------------------- splash y título
+  splash: {
+    studio: 'CHATTAHOOCHEES GAMES',
+    presents: 'presenta...',
+    goose: '¡HONK! (Esto es un logo. Aplaudan.)',
+  },
+  titleScreen: {
+    press: 'APRETÁ ENTER',
+    pressSub: '(o cualquier tecla, no somos exigentes)',
+    version: 'v1.0 · hecho en Atlanta con nostalgia rioplatense',
+  },
+
+  // ---------------------------------------------------------------- menú principal
+  mainMenu: {
+    items: [
+      { id: 'tower', label: 'TORRE DE LOS CHATTAHOOCHEES', desc: 'Cinco rivales, un Boss y un ganso que lo cuenta todo. Un jugador.' },
+      { id: 'friendly', label: 'AMISTOSO', desc: 'Dos jugadores, un teclado y una amistad en riesgo. También vale contra la CPU.' },
+      { id: 'practice', label: 'PRÁCTICA CON BETTY', desc: 'Betty te tira pelotas. No es personal. Bueno, un poco sí.' },
+      { id: 'options', label: 'OPCIONES', desc: 'Para los que leen el manual. Duración, dificultad, volumen y teclas.' },
+      { id: 'howto', label: 'CÓMO JUGAR', desc: 'Spoiler: se le pega a la pelota. Pero hay detalles.' },
+      { id: 'credits', label: 'CRÉDITOS', desc: 'Quién tiene la culpa de todo esto. Hay casamiento.' },
+    ],
+    help: '↑↓ elegir · ENTER confirmar',
+    gansoIdle: ['Elegí algo. No tengo todo el día. Bueno, sí tengo.', 'Don Ganso recomienda la torre. Don Ganso recomienda todo.'],
+  },
+
+  // ---------------------------------------------------------------- amistoso (antes, menú de prueba)
+  friendly: {
+    title: 'AMISTOSO',
+    sub: 'Elegí modo, sede y jugadores. Nadie pierde amigos. Casi nadie.',
+    chicanas: 'Chicanas',
+    chicanasValues: ['No', 'Sí'],
+  },
+
+  // ---------------------------------------------------------------- opciones
+  options: {
+    title: 'OPCIONES',
+    rows: {
+      games: 'Duración',
+      difficulty: 'Dificultad',
+      music: 'Música',
+      sfx: 'Efectos',
+      keys: 'Teclas',
+      reset: 'Borrar progreso',
+      back: 'Volver',
+    },
+    keysValue: 'ENTER para cambiar',
+    resetValue: 'ENTER (pide confirmación)',
+    resetConfirm: '¿Seguro? Se borran torres, trajes, chicanas aprendidas y Don Ganso. ENTER sí · ESC no',
+    resetDone: 'Listo. Borrón y cuenta nueva. Don Ganso no se acuerda de nada.',
+    help: '↑↓ elegir · ←→ cambiar · ESC volver',
+    gansoTips: {
+      games: 'En la torre, "4 games" es lo del documento. "2" es para los apurados. Como Seba.',
+      difficulty: '"Nivel Chattahoochee" es para los que juegan los jueves.',
+      music: 'Chiptune artesanal. Sin conservantes.',
+      sfx: 'Incluye graznidos. No se pueden sacar los graznidos.',
+      keys: 'Cambiá las teclas de golpe, slice, especial y cargada.',
+      reset: 'Para empezar de cero. O para ocultar pruebas.',
+      back: 'Volvé cuando quieras. Acá no se cobra entrada.',
+    } as Record<string, string>,
+  },
+  keys: {
+    title: 'TECLAS',
+    who: ['1 jugador', 'Jugador 1 (2P)', 'Jugador 2 (2P)'],
+    actions: ['Golpe', 'Slice / globo', 'Especial', 'Cargada'],
+    moves: ['Flechas o WASD', 'WASD', 'Flechas'],
+    move: 'Mover',
+    press: 'Apretá la tecla nueva... (ESC cancela)',
+    reset: 'Restaurar teclas',
+    back: 'Volver',
+    help: '←→ jugador · ↑↓ acción · ENTER cambiar · ESC volver',
+    pad: 'Joystick: A golpe · B slice · X especial · Y cargada · START pausa',
+  },
+
+  // ---------------------------------------------------------------- cómo jugar
+  howto: {
+    title: 'CÓMO JUGAR',
+    pages: [
+      {
+        title: 'Controles',
+        lines: [
+          '1 JUGADOR: flechas o WASD mueven · Z golpe (mantené = más fuerte) · X slice (mantené = globo)',
+          'C especial · V cargada · ESC o ENTER pausa',
+          '2 JUGADORES: J1 = WASD, F golpe, G slice, H especial, R cargada, ESC pausa',
+          'J2 = flechas, K golpe, L slice, Ñ (o ;) especial, I cargada, ENTER pausa',
+          'JOYSTICK: A golpe · B slice · X especial · Y cargada · START pausa (uno por jugador)',
+          'Las teclas se pueden cambiar en Opciones.',
+        ],
+      },
+      {
+        title: 'El golpe',
+        lines: [
+          'Cuando la pelota entra en tu zona, apretá golpe o slice.',
+          'TIMING: temprano sale cruzada; tarde, paralela. Izquierda/derecha también apuntan.',
+          'PROFUNDIDAD: mantené arriba para pegar profundo; abajo, dejadita o golpe corto.',
+          'Cerca de la red el golpe es volea. Si viene alta, smash.',
+          'La SOMBRA te dice dónde va a picar. La pelota miente; la sombra, no.',
+          'Si no llegás, apretá golpe corriendo: te tirás de palomita.',
+        ],
+      },
+      {
+        title: 'Saque y aire',
+        lines: [
+          'SAQUE: golpe tira la pelota; golpe otra vez le pega. El medidor sube y baja:',
+          'cuanto más arriba, más fuerte... y más riesgo de falta. Izquierda/derecha eligen el lado.',
+          'El segundo saque es más seguro (con efecto). Una doble falta la canta Don Ganso con gusto.',
+          'AIRE: la barrita debajo de tu nombre. Correr mucho la baja; sin aire, sos más lento.',
+          'Se recupera entre puntos. Al Rosco se le acaba antes (y lo sabe).',
+        ],
+      },
+      {
+        title: 'Mística y especiales',
+        lines: [
+          'Cada personaje tiene una RECETA de 3 pasos (los casilleros al lado del marcador).',
+          'Cumplilos en cualquier orden: con los 3, "¡ESPECIAL LISTO!" y lo usás con C (uno por game).',
+          'La CARGADA (V) después de ganar un punto suma para algunas recetas.',
+          'Después de perderlo... te deja en ridículo. Y a Volpi lo hace tentar.',
+          'En la pausa se ven las recetas completas de los dos.',
+        ],
+      },
+      { title: 'Recetas', lines: [] },
+      {
+        title: 'Torre y chicanas',
+        lines: [
+          'En la torre enfrentás a los otros cinco y después al Boss: EL GRAN CHATTAHOOCHEE.',
+          'Antes de cada partido, DUELO DE CHICANAS: elegí la réplica buena y arrancás con ventaja.',
+          'Las réplicas que aprendés quedan guardadas (aparecen en verde).',
+          'En el Boss jugás un game contra cada uno, con 3 latas de pelotas como vidas.',
+          'Ganá la torre con un personaje para desbloquear su traje. Con los seis... sorpresa.',
+        ],
+      },
+    ],
+    help: '←→ página · ESC volver',
+  },
+
+  // ---------------------------------------------------------------- práctica con Betty
+  practice: {
+    title: 'PRÁCTICA CON BETTY',
+    stats: (r: number, s: number, b: number) => `DEVOLUCIONES ${r} · RACHA ${s} · MEJOR ${b}`,
+    hello: 'HOLA, HUMANO. INICIANDO PROGRAMA DE ENTRENAMIENTO. PREPARE RAQUETA.',
+    programs: {
+      normal: 'PROGRAMA: PELOTEO NORMAL.',
+      wide: 'PROGRAMA: PELOTAS ABIERTAS. CORRA, HUMANO.',
+      short: 'PROGRAMA: DEJADITAS. SUBA A LA RED.',
+      deep: 'PROGRAMA: PROFUNDAS. PARA ATRÁS, HUMANO.',
+      lob: 'PROGRAMA: GLOBOS. MIRE PARA ARRIBA.',
+      mix: 'PROGRAMA: SORPRESA. NI YO SÉ QUÉ VIENE.',
+    } as Record<string, string>,
+    good: ['DEVOLUCIÓN REGISTRADA.', 'BIEN, HUMANO.', 'ÁNGULO ACEPTABLE.', 'VOLPI ESTARÍA ORGULLOSO. O SE REIRÍA.'],
+    miss: ['ERROR DETECTADO. RECALIBRANDO HUMANO.', 'ESA NO. INTENTE OTRA VEZ.', 'LA PELOTA ERA LA AMARILLA.', 'PELOTA PERDIDA. SE DESCUENTA DE SU SUELDO.'],
+    streak: (n: number) => `RACHA DE ${n}. PROCESANDO EMOCIÓN... ¡BIP!`,
+    mabel: ['¿VIO A MABEL? NO, POR NADA.', 'MABEL DICE QUE ESA FUE CROCANTE.', 'MI TOLVA ESTÁ LLENA. DE PELOTAS. Y DE SENTIMIENTOS.'],
+    help: 'ESC: pausa (y salir)',
+  },
+
+  // ---------------------------------------------------------------- créditos
+  credits: {
+    title: 'CRÉDITOS',
+    lines: [
+      ['UN JUEGO DE LOS CHATTAHOOCHEES', ''],
+      ['', ''],
+      ['Dirección de dejaditas', 'EL ROSCO'],
+      ['Relaciones internacionales y voleas', 'EL SEBA'],
+      ['Departamento de seriedad', 'TRUE TINCHO'],
+      ['Globos y carcajadas', 'VOLPI'],
+      ['Fritura y guitarra eléctrica', 'EL VIKINGO'],
+      ['Obras, nivelación y minicargadora', 'ANGELITO'],
+      ['Arbitraje y narración', 'DON GANSO'],
+      ['Lanzamiento de pelotas', 'BETTY'],
+      ['Catering', 'MABEL'],
+      ['Ardillas, ciervos y gansos', 'LA FAUNA DE GEORGIA'],
+      ['Río', 'EL CHATTAHOOCHEE'],
+      ['', ''],
+      ['Ningún quiropráctico fue lastimado', 'durante la producción de este juego.'],
+      ['Las chicanas son de ficción.', 'Los errores no forzados, no.'],
+    ] as [string, string][],
+    wedding: {
+      title: 'Y AHORA SÍ...',
+      lines: [
+        ['DON GANSO', 'Estamos reunidos a orillas del Chattahoochee para unir a esta lanzapelotas y a esta freidora.'],
+        ['DON GANSO', 'Betty, ¿aceptás a Mabel, en la fritura y en la humedad, en el ace y en la doble falta?'],
+        ['BETTY', 'AFIRMATIVO. CORAZÓN AL 100%.'],
+        ['DON GANSO', 'Mabel, ¿aceptás a Betty, a 200 grados y a temperatura ambiente?'],
+        ['MABEL', '¡DING!'],
+        ['DON GANSO', 'Por el poder que me confiere la silla de umpire... los declaro electrodomésticos felices.'],
+        ['DON GANSO', '¡HONK! Puede tirar la pelota a la novia.'],
+      ] as [string, string][],
+    },
+    end: 'FIN',
+    thanks: 'Gracias por jugar. Ahora, a la cancha de verdad.',
+    help: 'ENTER: seguir · ESC: volver al menú',
   },
 
   // ---------------------------------------------------------------- pausa y fin

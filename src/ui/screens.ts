@@ -8,6 +8,7 @@ import { ensureCharacterTextures } from '../game/spriteTextures';
 import { addCanvasTexture, imageToCanvas } from '../game/textures';
 import type { CharacterId } from '../game/characters';
 import { keyboard } from '../input/keyboard';
+import { setMusicDuck } from '../audio/engine';
 
 /** Textura a partir de un dibujo del pincel (una sola vez por clave). */
 export function artTexture(scene: Phaser.Scene, key: string, draw: () => PixelImage): string {
@@ -123,6 +124,8 @@ export function enter(scene: Phaser.Scene, ms = 220): void {
   (scene as unknown as { __leaving?: boolean }).__leaving = false;
   scene.cameras.main.fadeIn(ms, 0, 0, 0);
   keyboard.install();
+  keyboard.setPadMode('menu');
+  setMusicDuck(1);
 }
 
 export const CONFIRM = ['Enter', 'Space', 'KeyZ', 'KeyF', 'KeyK'];

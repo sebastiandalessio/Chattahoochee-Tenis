@@ -2,6 +2,7 @@
 // debilidad. Al pasar el cursor, el personaje dice una de sus frases.
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { CHARACTERS, CHARACTER_ORDER, SECRET_CHARACTER, type CharacterId } from '../game/characters';
 import { CHARACTER_ARTS } from '../art/sheets';
 import { newTower } from '../game/tower';
@@ -21,7 +22,7 @@ const CELL_W = 80;
 const CELL_H = 82;
 
 export interface SelectData {
-  mode: 'tower';
+  mode?: 'tower' | 'practice';
 }
 
 export class CharSelectScene extends Phaser.Scene {
@@ -46,7 +47,10 @@ export class CharSelectScene extends Phaser.Scene {
     return { x: GRID_X + (i % 3) * CELL_W + CELL_W / 2 - 2, y: GRID_Y + Math.floor(i / 3) * CELL_H + 36 };
   }
 
-  init(): void {
+  private mode: 'tower' | 'practice' = 'tower';
+
+  init(data: SelectData): void {
+    this.mode = data?.mode ?? 'tower';
     this.sel = 0;
     this.cells = [];
     this.info = [];
@@ -57,6 +61,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   create(): void {
     enter(this);
+    music.play('select');
     const g = this.add.graphics();
     g.fillStyle(0x15141f).fillRect(0, 0, 640, 360);
     // Tablero de fondo a cuadros, muy oscuro.
@@ -169,8 +174,9 @@ export class CharSelectScene extends Phaser.Scene {
     else if (save().towersWon.includes(id)) add(pxText(this, X, 326, T.select.towerDone, { color: UI.gold }));
 
     if (say) {
-      this.bubble.show(wrapText(pick(txt.phrases), 180), GRID_X + CELL_W * 1.5 - 4, 262, 2200);
-      sfx.bip();
+      const phrase = pick(txt.phrases);
+      this.bubble.show(wrapText(phrase, 180), GRID_X + CELL_W * 1.5 - 4, 262, 2200);
+      sfx.voice(id, phrase);
     }
   }
 
@@ -217,14 +223,17 @@ export class CharSelectScene extends Phaser.Scene {
       sfx.clinc();
       this.refresh(false);
     }
-    if (keyboard.anyPressed(CONFIRM)) {
+    if (keyboard.anyPressed(CONFIRM) && this.mode === 'practice') {
+      sfx.ready();
+      goTo(this, 'match', { mode: 'practice', venue: 'breckenridge', chars: [id, 'volpi'], outfits: [this.outfitOf(id), 0], games: 4, difficulty: 1 });
+    } else if (keyboard.anyPressed(CONFIRM)) {
       sfx.ready();
       const seed = Math.floor(Math.random() * 1e9);
       const rnd = mulberry(seed);
       const ctx: TowerCtx = { run: newTower(id, this.outfitOf(id), rnd, seed), used: [] };
       goTo(this, 'tower', { ctx });
     } else if (keyboard.anyPressed(BACK)) {
-      goTo(this, 'testMenu');
+      goTo(this, 'menu', { sel: this.mode === 'practice' ? 2 : 0 });
     }
     keyboard.endFrame();
   }

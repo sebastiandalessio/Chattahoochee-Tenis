@@ -98,7 +98,13 @@ export interface MatchConfig {
   firstServer?: Side;
   /** Eventos de la sede (pelota de fútbol, ardilla, etc.). Por defecto, prendidos. */
   venueEvents?: boolean;
+  /** Práctica con Betty: el de arriba es la lanzapelotas (no se mueve, solo tira). No se lleva tanteador. */
+  practice?: boolean;
 }
+
+/** Programas de Betty: qué tipo de pelota tira. */
+export type FeedProgram = 'normal' | 'wide' | 'short' | 'deep' | 'lob' | 'mix';
+export const FEED_PROGRAMS: FeedProgram[] = ['normal', 'wide', 'short', 'deep', 'lob', 'mix'];
 
 export interface PlayerCounters {
   pointsWon: number;
@@ -162,6 +168,8 @@ export type MatchEvent =
   | { type: 'taunt'; side: Side; good: boolean }
   | { type: 'emote'; side: Side; text: EmoteKey }
   | { type: 'passive'; side: Side; id: string }
+  | { type: 'feed'; program: FeedProgram; kmh: number }
+  | { type: 'practice'; good: boolean; streak: number; best: number; returns: number; feeds: number; newProgram: FeedProgram | null }
   | { type: 'weakness'; side: Side; id: string }
   | { type: 'exento'; side: Side }
   | { type: 'burn'; side: Side }
@@ -351,7 +359,12 @@ export class Match {
   private assistPlan: [InterceptPlan | null, InterceptPlan | null] = [null, null];
   private assistT = 0;
 
+  /** Práctica con Betty. */
+  readonly practice: boolean;
+  practiceStats = { feeds: 0, returns: 0, streak: 0, best: 0, program: 'normal' as FeedProgram };
+
   constructor(cfg: MatchConfig) {
+    this.practice = !!cfg.practice;
     this.rng = createRng(cfg.seed ?? Date.now());
     this.venue = cfg.venue ? VENUES[cfg.venue] : null;
     this.surface = cfg.surface ?? this.venue?.surface ?? SURFACES.hard;
@@ -528,6 +541,13 @@ export class Match {
   private stepPreServe(dt: number, edges: InputEdges[]): void {
     const srv = this.server;
     const rcv = this.receiver;
+    if (this.practice) {
+      // Betty no saca: tira una pelota de peloteo cuando el jugador está listo.
+      this.movePlayer(rcv, dt, true);
+      this.placeBallInHand();
+      if (this.phaseT > 0.9) this.feed();
+      return;
+    }
     // El que saca solo se mueve de costado, de su lado de la marca central.
     const dSign = this.rally.serveSide === 'deuce' ? 1 : -1;
     const lane = srv.rightSign * dSign;
@@ -548,6 +568,43 @@ export class Match {
       srv.setAnim('toss');
       this.push({ type: 'toss', side: srv.side });
     }
+  }
+
+  /** Betty tira una pelota según su programa (normal, abierta, corta, profunda, globo o mezcla). */
+  private feed(): void {
+    const b = this.players[1];
+    const st = this.practiceStats;
+    const rng = this.rng;
+    let prog = st.program;
+    if (prog === 'mix') prog = rng.pick(['normal', 'wide', 'short', 'deep', 'lob'] as FeedProgram[]);
+    const from = { x: b.x + 0.3, y: b.y + 0.4, z: 1.0 };
+    const side = rng.chance(0.5) ? 1 : -1;
+    const target =
+      prog === 'wide'
+        ? { x: side * rng.range(3.0, 3.8), y: rng.range(7, 10) }
+        : prog === 'short'
+          ? { x: rng.range(-3, 3), y: rng.range(3.4, 5) }
+          : prog === 'deep'
+            ? { x: rng.range(-3, 3), y: rng.range(10, 11.2) }
+            : prog === 'lob'
+              ? { x: rng.range(-2.5, 2.5), y: rng.range(9, 11) }
+              : { x: rng.range(-2.5, 2.5), y: rng.range(7, 10) };
+    let T = prog === 'lob' ? 2.4 : prog === 'deep' ? 1.15 : prog === 'short' ? 1.4 : 1.3;
+    for (let i = 0; i < 30; i++) {
+      const c = netClearance(from, solveLaunch(from, target, T, 1), 1);
+      if (c === null || c >= 0.35) break;
+      T *= 1.05;
+    }
+    const vel = solveLaunch(from, target, T, 1);
+    this.ball = makeBall(from.x, from.y, from.z);
+    const kmh = Math.round(Math.hypot(vel.vx, vel.vy, vel.vz) * KMH_FACTOR);
+    this.applyShot({ kind: 'drive', vel, gMul: 1, bounceE: 1, bounceF: 1, intended: target, target, T, kmh, sigma: 0 });
+    this.rally.onHit(1);
+    this.phase = 'rally';
+    this.phaseT = 0;
+    this.timeSinceHit = 0;
+    st.feeds++;
+    this.push({ type: 'feed', program: prog, kmh });
   }
 
   private stepToss(dt: number, edges: InputEdges[]): void {
@@ -730,7 +787,7 @@ export class Match {
         if (still && p.mods.frozenT <= 0) p.setAnim(this.pending.winner === p.side ? 'celebrate' : 'lament');
       }
     }
-    const wait = this.pending?.kind === 'point' ? 1.9 : 1.2;
+    const wait = this.practice ? 0.9 : this.pending?.kind === 'point' ? 1.9 : 1.2;
     const taunting = this.players.some((p) => p.mods.tauntT > 0.3);
     if (this.phaseT < wait || (taunting && this.phaseT < wait + 1)) return;
 
@@ -742,6 +799,24 @@ export class Match {
     } else if (pend.kind === 'let') {
       this.setupPoint(false);
     } else if (pend.kind === 'replay') {
+      this.attempt = 1;
+      this.setupPoint();
+    } else if (this.practice) {
+      // Práctica: no hay tanteador; se cuentan las devoluciones y la racha.
+      const st = this.practiceStats;
+      const good = pend.winner === 0;
+      if (good) {
+        st.returns++;
+        st.streak++;
+        st.best = Math.max(st.best, st.streak);
+      } else st.streak = 0;
+      // Cada 6 pelotas Betty cambia de programa.
+      let newProgram: FeedProgram | null = null;
+      if (st.feeds % 6 === 0) {
+        newProgram = FEED_PROGRAMS[(FEED_PROGRAMS.indexOf(st.program) + 1) % FEED_PROGRAMS.length];
+        st.program = newProgram;
+      }
+      this.push({ type: 'practice', good, streak: st.streak, best: st.best, returns: st.returns, feeds: st.feeds, newProgram });
       this.attempt = 1;
       this.setupPoint();
     } else {

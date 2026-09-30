@@ -4,7 +4,8 @@ import { makeBasicTextures } from '../game/textures';
 import { CHARACTER_ORDER, type CharacterId } from '../game/characters';
 import type { CharacterPick, MatchSetup } from '../game/setup';
 import { preloadOverrides } from '../game/spriteTextures';
-import { keyboard } from '../input/keyboard';
+import { applyKeyOptions, keyboard } from '../input/keyboard';
+import { setMusicVolume, setSfxVolume } from '../audio/engine';
 import { buildFonts } from '../ui/pixelFont';
 import { unlockAudio } from '../audio/sfx';
 import { isVenueId, type VenueId } from '../sim/venues';
@@ -30,6 +31,11 @@ export class BootScene extends Phaser.Scene {
     makeBasicTextures(this);
     keyboard.install();
     unlockAudio();
+    // Opciones guardadas: volumen y teclas.
+    const opts = save().options;
+    setMusicVolume(opts.music);
+    setSfxVolume(opts.sfx);
+    applyKeyOptions(opts.keys);
 
     // Atajos para pruebas automáticas: ?demo=1&speed=4&games=2&seed=5&p1=volpi&p2=angelito&venue=stRegis
     const q = new URLSearchParams(window.location.search);
@@ -49,7 +55,8 @@ export class BootScene extends Phaser.Scene {
       this.scene.start('match', setup);
       return;
     }
-    this.scene.start('testMenu');
+    // ?menu=1 va directo al menú principal (para las pruebas); si no, splash y título.
+    this.scene.start(q.has('menu') ? 'menu' : q.has('amistoso') ? 'testMenu' : 'splash');
   }
 
   /**

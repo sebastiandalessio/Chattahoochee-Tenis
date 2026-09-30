@@ -2,6 +2,7 @@
 // que se bajan uno por uno con su frase. Don Ganso explica las reglas del relevo.
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { flowMode } from '../game/autoplay';
 import { drawLongKayak } from '../art/cutsceneArt';
 import { drawGanso, drawUmpireChair, type GansoFrame } from '../art/ganso';
@@ -46,6 +47,7 @@ export class BossIntroScene extends Phaser.Scene {
 
   create(): void {
     enter(this, 500);
+    music.play('boss');
     riverScene(this, () => {}, 640, 360, HORIZON, SHORE);
     pxText(this, 320, 8, T.boss.title, { outline: true, color: UI.red, scale: 3 }).setOrigin(0.5, 0).setDepth(100);
 
@@ -107,7 +109,7 @@ export class BossIntroScene extends Phaser.Scene {
       onComplete: () => {
         p.play('taunt', 5);
         sfx.bounce();
-        sfx.taunt(id);
+        sfx.voice(id, T.boss.intro[id]);
         for (const old of this.bubbles) old.hide();
         const b = new Bubble(this);
         b.show(wrapText(T.boss.intro[id], 150), tx, ty - 120, 2600);

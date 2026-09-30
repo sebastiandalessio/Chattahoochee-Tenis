@@ -2,6 +2,7 @@
 // desbloqueó (traje alternativo y, con las seis torres, Don Ganso jugable).
 
 import Phaser from 'phaser';
+import { music } from '../audio/music';
 import { drawBetty, drawLoader, drawMabel } from '../art/objects';
 import { bench, goose } from '../art/props';
 import { NPCS } from '../art/npcs';
@@ -349,6 +350,7 @@ export class EndingScene extends Phaser.Scene {
 
   create(): void {
     enter(this, 500);
+    music.play('title');
     const g = this.add.graphics();
     g.fillStyle(0x0d0b14).fillRect(0, 0, 640, 360);
     drawBox(g, PX - 4, PY - 4, PW + 8, PH + 8, 0x0d0b14, UI.gold);
@@ -372,6 +374,7 @@ export class EndingScene extends Phaser.Scene {
     this.caption.setText(wrapText(tx.caption, 540));
     // Globo arriba del protagonista (en la viñeta 2 de Tincho el globo es la respuesta a la pregunta).
     this.panel.say(tx.bubble, 300, 80, 700);
+    if (tx.bubble) this.time.delayedCall(700, () => sfx.voice(who, tx.bubble));
     this.t = 0;
   }
 
@@ -409,7 +412,7 @@ export class EndingScene extends Phaser.Scene {
     this.t += dt;
     for (const p of this.panel?.puppets ?? []) p.update(dt);
     if (this.t > 0.6 && keyboard.anyPressed(CONFIRM)) {
-      if (this.unlockShown) goTo(this, 'testMenu', undefined, 500);
+      if (this.unlockShown) goTo(this, 'credits', undefined, 500);
       else if (this.idx < ENDINGS[this.boss.run.player].length - 1) this.show(++this.idx);
       else this.showUnlock();
       this.t = 0;
