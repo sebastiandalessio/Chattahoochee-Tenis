@@ -2,7 +2,7 @@
 
 import type { Stats } from '../logic/stats';
 
-export type CharacterId = 'elRosco' | 'elSeba' | 'trueTincho' | 'volpi' | 'elVikingo' | 'angelito';
+export type CharacterId = 'elRosco' | 'elSeba' | 'trueTincho' | 'volpi' | 'elVikingo' | 'angelito' | 'donGanso';
 
 export interface CharacterDef {
   id: CharacterId;
@@ -56,6 +56,24 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     stats: s(8, 5, 4, 6, 6, 8),
     short: true,
   },
+  // Secreto: se desbloquea ganando la torre con los seis.
+  donGanso: {
+    id: 'donGanso',
+    club: 'neutral',
+    stats: s(6, 5, 7, 6, 7, 6),
+  },
 };
 
+/** Los seis Chattahoochees (los rivales de la torre y del Boss). */
 export const CHARACTER_ORDER: CharacterId[] = ['elRosco', 'elSeba', 'trueTincho', 'volpi', 'elVikingo', 'angelito'];
+
+/** El personaje secreto. */
+export const SECRET_CHARACTER: CharacterId = 'donGanso';
+
+/** Clásicos: Avellaneda (Rosco–Tincho) y Superclásico (Seba contra los de River). */
+export function clasicoOf(a: CharacterId, b: CharacterId): 'avellaneda' | 'superclasico' | null {
+  const clubs = [CHARACTERS[a].club, CHARACTERS[b].club].sort().join('-');
+  if (clubs === 'independiente-racing') return 'avellaneda';
+  if (clubs === 'boca-river') return 'superclasico';
+  return null;
+}

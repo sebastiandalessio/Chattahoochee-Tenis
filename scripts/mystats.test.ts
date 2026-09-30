@@ -11,7 +11,7 @@ it('mística', () => {
   const DT = 1 / 120;
   const stats: Record<string, { matches: number; won: number; specials: number; steps: Record<string, number>; taunts: number; minutes: number; points: number }> = {};
   for (const id of CHARACTER_ORDER) stats[id] = { matches: 0, won: 0, specials: 0, steps: {}, taunts: 0, minutes: 0, points: 0 };
-  let seed = 100;
+  let seed = Number(process.env.SEED ?? 100);
   for (const a of CHARACTER_ORDER) {
     for (const b of CHARACTER_ORDER) {
       if (a === b) continue;

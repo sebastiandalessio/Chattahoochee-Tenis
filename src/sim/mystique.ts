@@ -209,7 +209,14 @@ export class Mystique {
       // Cara de póker: inmune. Responde "..." y queda un silencio incómodo.
       this.m.emit({ type: 'emote', side: rival.side, text: 'poker' });
       this.m.emit({ type: 'passive', side: rival.side, id: 'poker' });
-    } else if (this.isChar(rival, 'volpi')) {
+      return;
+    }
+    // Don Ganso, autoridad: después de ganar un punto, su ¡HONK! pone nervioso al que saca.
+    if (this.isChar(p, 'donGanso')) {
+      rival.mods.serveErrorMul = Math.max(rival.mods.serveErrorMul, 1.4);
+      this.m.emit({ type: 'passive', side: p.side, id: 'autoridad' });
+    }
+    if (this.isChar(rival, 'volpi')) {
       // Se tienta: su próximo primer saque sale flojo.
       rival.mods.weakServe = true;
       this.m.emit({ type: 'emote', side: rival.side, text: 'tentado' });

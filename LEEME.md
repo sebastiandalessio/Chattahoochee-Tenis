@@ -7,6 +7,8 @@
 
 Controles (1 jugador): flechas o WASD para moverte, **Z** golpe (mantené para pegar más fuerte), **X** slice (mantené para globo), **C** especial, **V** cargada, **Esc** pausa. Para sacar: Z tira la pelota y Z otra vez le pega.
 
+**Torre de los Chattahoochees:** en el menú, bajá hasta "TORRE DE LOS CHATTAHOOCHEES" (usa la duración y la dificultad que elegiste arriba). Elegí tu personaje, contestá las chicanas y subí la torre hasta el Boss. El progreso (torres ganadas, trajes y chicanas aprendidas) se guarda en el navegador: si abrís el juego en otra computadora o en otro navegador, arranca de cero.
+
 ## Cómo volver a compilar
 
 Necesitás Node.js instalado. En una terminal, dentro de esta carpeta:

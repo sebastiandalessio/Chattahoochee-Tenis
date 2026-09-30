@@ -4,7 +4,7 @@
 export type Side = 0 | 1;
 
 export interface MatchRules {
-  /** Games para ganar el set (2, 4 o 6). El tie-break se juega en N-N. */
+  /** Games para ganar el set (2, 4 o 6). El tie-break se juega en N-N. Con 1, un solo game define. */
   gamesPerSet: number;
   /** Sets que hay que ganar (1 = partido a un set). */
   setsToWin: number;
@@ -153,7 +153,8 @@ function winGame(s: MatchScore, winner: Side, events: ScoreEvent[]) {
 
   const n = s.rules.gamesPerSet;
   const [g0, g1] = s.games;
-  const setWon = wasTiebreak || ((g0 >= n || g1 >= n) && Math.abs(g0 - g1) >= 2);
+  // Con 1 game por set (el relevo del Boss: cada game es un mini partido) el primer game define.
+  const setWon = wasTiebreak || (n === 1 ? g0 + g1 === 1 : (g0 >= n || g1 >= n) && Math.abs(g0 - g1) >= 2);
 
   if (setWon) {
     const setScore: [number, number] = [g0, g1];

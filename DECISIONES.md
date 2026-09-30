@@ -48,7 +48,7 @@ Cuando el documento original dejaba algo abierto, elegimos la opción más diver
 - **Paralelo Académico:** passing tipo láser pegado a la línea del lado donde está Tincho, en cámara lenta con cartel de "REPETICIÓN". Solo lo devuelve quien esté a ~1 m de la pelota (no hay palomita que valga).
 - **¡Dale, Betty!:** Betty aparece al lado de Volpi y en su próximo golpe salen tres pelotas iguales de su cañón, a izquierda, centro y derecha. Solo una es real; las otras desaparecen al picar. La CPU rival sigue una fantasma el 60% de las veces.
 - **Mabel, a 200 grados:** Mabel aparece al lado del Vikingo, hace "¡DING!" y la pelota sale dorada y humeante. El que la devuelve se quema las manos (queda un instante soplándose) y su devolución sale como un globo corto, lista para el smash.
-- **Minicargadora:** Angelito se sube a la minicargadora (1,8 veces más rápido y una pala de 4 m que devuelve todo sola) y deja un bache con conos y cartel de "ZONA EN OBRA" en la cancha rival hasta el final del game: si la pelota pica en el bache, sale para cualquier lado.
+- **Minicargadora:** Angelito se sube a la minicargadora (1,8 veces más rápido y una pala de 4 m que devuelve todo sola) y deja un bache con conos y cartel de "ZONA EN OBRA" en la cancha rival hasta que termina el punto (pedido del grupo: antes duraba todo el game): si la pelota pica en el bache, sale para cualquier lado.
 - **Modo Dinein:** velocidad x1,6 y volea imán en la red durante el punto; la pantalla "late".
 - **Cargada (V / R / I):** se hace entre puntos. Después de ganar el punto cuenta para las recetas; después de perderlo, el personaje queda en ridículo (Don Ganso lo comenta y pierde un poco de aire). Una por punto. Volpi se tienta (su próximo primer saque sale flojo) y Tincho es inmune ("...").
 - **Pasivas y debilidades** como en el documento. Detalles elegidos: la risa de Rosco sube 60% el error del próximo saque del rival; la inmunidad diplomática de Seba repite el punto (una vez por partido) con sello "EXENTO – Convención de Viena"; Angelito queda 0,4 s quieto con un "?" después de cada golpe; el Vikingo en la red se desorienta ("¿Y esto qué es?") y volea con el doble de error; Seba apurado (le pega muy temprano) tiene 25% de tirarla a la red o afuera.
@@ -66,3 +66,41 @@ Cuando el documento original dejaba algo abierto, elegimos la opción más diver
 - **La pregunta del pickleball (St. Regis):** un jugador de pickleball se acerca al alambrado y pregunta si le prestan la cancha. El partido espera y aparece un diálogo de 4 opciones al estilo aventura gráfica (↑↓ y Enter/Z). No cambia el partido: es para reírse. En la demo elige solo.
 - **El medidor de saque** ahora aparece solo cuando saca un humano (el de la CPU tapaba la cancha).
 - **Pruebas:** `npm run playtest -- sedes` fuerza cada evento en cada sede y saca capturas en `playtest/`.
+
+## Hito 5 – Torre, chicanas, Boss, finales y desbloqueos
+
+- **Torre de los Chattahoochees:** elegís personaje (grilla de 3×2 con retratos, ficha con stats, bio, especial, pasiva y debilidad; al pasar el cursor dice una frase) y enfrentás a los otros cinco en orden al azar. Las sedes van rotando (nunca dos seguidas iguales). La torre es una columna de retratos estilo Mortal Kombat con el Boss arriba (la silueta de los cinco con "???"); después de cada victoria, tu retrato sube un escalón.
+- **Dificultad creciente:** en cada escalón la CPU erra un poco menos y reacciona un poco más rápido (del escalón 1 al Boss: error ×1,2 → ×0,88). Se suma a la dificultad elegida.
+- **Duración y dificultad de la torre:** por ahora se eligen en el menú de prueba y quedan guardadas (en el hito 6 pasan a la pantalla de Opciones).
+- **Pantalla VS** con los dos retratos enfrentados y un "consejo" de pantalla de carga. En los **clásicos** (Rosco–Tincho y Seba contra Volpi o el Vikingo) aparece el cartel de "¡CLÁSICO DE AVELLANEDA!" o "¡SUPERCLÁSICO!", el fondo se tiñe con los colores de los clubes, Don Ganso se pone exagerado y Angelito opina como mediador. El cántico chiptune llega con la música en el hito 6.
+- **Duelo de Chicanas:** antes de cada partido de la torre el rival te tira una chicana y elegís entre 3 réplicas: una buena y dos malas (y graciosas). Hay entre 8 y 9 por personaje más 6 compartidas que puede usar cualquiera (las compartidas se aprenden con uno y sirven contra todos). En una misma torre no se repiten.
+  - **Si acertás:** arrancás con el primer paso de tu receta tildado y el rival sale "calentito" (30% más de error en el primer game).
+  - **Si errás:** el rival arranca con el primer paso de su receta tildado.
+  - Las réplicas correctas se aprenden y quedan guardadas: la próxima vez aparecen en verde con "(ya la sabés)".
+- **Resultado:** la pantalla final del partido suma una estadística absurda por personaje (veces que Rosco se agarró la camiseta, mates tomados, riffs de guitarra, "¡HEEEY!" gritados...).
+- **Game Over:** "¿CONTINUAR? 10... 9..." con Don Ganso contando y cada vez más impaciente (a los 2 se duerme). Continuar repite el escalón, con chicana nueva.
+- **Boss "EL GRAN CHATTAHOOCHEE":** llegan los cinco en un kayak larguísimo por el río al atardecer y se bajan uno por uno con su frase; Don Ganso anuncia las reglas. **Relevo por games** en la orilla del Chattahoochee:
+  - Arriba se ve la fila con los cinco retratos y 3 latas de pelotas (las vidas).
+  - Ganás el game y el rival queda ELIMINADO, con sello rojo. Lo perdés y perdés una lata, y ese rival vuelve al final de la fila.
+  - Cada rival arranca con el primer paso de su receta tildado; tu receta se arrastra de un game al otro.
+  - El saque alterna game a game. Después de 3 iguales, punto de oro.
+  - Betty y Mabel miran desde el costado y festejan los puntos.
+  - Sin latas, Game Over: si continuás, el relevo arranca de cero.
+- **Victoria:** los cinco te levantan en andas y se tiran todos al río.
+- **Finales:** 3 viñetas por personaje con texto, como en el documento (el quiropráctico de Rosco, la valija diplomática y la pesca de Seba, el píxel de Tincho, las 400 pelotas de Betty, la copa frita y el drakkar del Vikingo, el estadio de Angelito y la foto donde quedó afuera).
+- **Betty y Mabel se van conociendo** en un rincón de la pantalla de la torre (un diálogo por escalón), para que el casamiento de los créditos del hito 6 tenga historia.
+- **Desbloqueos y guardado:** se guardan en el navegador (localStorage) las torres ganadas, los trajes desbloqueados, las réplicas aprendidas y la duración y dificultad elegidas. Si el navegador no deja guardar, el juego anda igual.
+  - Ganar la torre con un personaje desbloquea sus trajes alternativos (se eligen con X en la selección) y le pone una estrellita.
+  - **Ganar con los seis desbloquea a DON GANSO JUGABLE:** aparece en un casillero "SECRETO" abajo de la grilla. Tiene stats que suman 37, como todos.
+    - Especial: ¡VUELO RASANTE! (velocidad ×1,7 y volea imán durante un punto).
+    - Pasiva: Autoridad (su ¡HONK! después de ganar un punto pone nervioso al que saca; Tincho es inmune).
+    - Debilidad: Patas cortas (para atrás camina como pato).
+    - Su torre son 5 de los 6. Mientras juega, canta los puntos "su primo". Tiene su propio final.
+- **Pedidos del grupo después de probar:**
+  - **La zona en obra de la minicargadora ahora dura solo el punto** en que se usa el especial (antes quedaba todo el game).
+  - **Saques más parejos:** el stat de Saque ahora da sobre todo consistencia, además de un poco de velocidad. Antes Volpi, el mejor sacador, era el que más erraba porque sacaba más rápido y más plano.
+  - El segundo saque es más seguro (más arco, más adentro del cuadro), como un saque con efecto.
+  - Volpi CPU ya no se juega el primer saque al máximo.
+  - Con partidos simulados: dobles faltas de la CPU = 0 por partido, primer saque adentro entre 77% (Seba) y 92–95% (Volpi y Rosco).
+- **Balance:** Tincho ganaba el 83% de los partidos simulados y Rosco el 20%; se ajustó el error de la CPU de los dos. Se miden con `TUNE=1 npx vitest run scripts/mystats` y `scripts/servestats` (y `humanserve` para el saque con timing humano).
+- **Pruebas:** `npm run playtest -- pantallas` saca capturas de todas las pantallas nuevas (selección, torre, VS, clásico, chicanas, game over, Boss, festejo y los 7 finales). `npm run playtest -- torre` juega una torre entera en automático, de punta a punta. Atajos por dirección para probar: `?select=1`, `?tower=volpi&step=2`, `?duel=volpi`, `?boss=volpi`, `?bossmatch=volpi`, `?ending=volpi` (con `&auto=1&speed=8` la CPU juega por vos).

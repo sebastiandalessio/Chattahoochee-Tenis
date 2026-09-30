@@ -8,14 +8,19 @@ import { keyboard, KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B } from '../input/keyboard
 import { CpuBrain } from '../sim/ai';
 import { personalityFor } from '../sim/personalities';
 import { emptyInput, type PlayerInput } from '../sim/input';
-import { Match, type MatchEvent, type PlayerSim } from '../sim/match';
+import { Match, type MatchEvent, type PlayerSetup, type PlayerSim } from '../sim/match';
 import { pick, T } from '../texts/es';
 import { sfx } from '../audio/sfx';
 import { project, scaleAt } from '../game/projection';
 import type { PlayerView } from '../game/playerView';
 import { SpritePlayerView } from '../game/spritePlayerView';
 import { ensureCharacterTextures, type CharacterTextures } from '../game/spriteTextures';
-import { MystiqueFx } from '../game/mystiqueFx';
+import { MystiqueFx, ensureMystiqueTextures } from '../game/mystiqueFx';
+import { BOSS_STEP, towerRamp, winStep } from '../game/tower';
+import { currentRival, relayGame } from '../game/bossRelay';
+import type { BossCtx } from '../game/flow';
+import { drawCan } from '../art/cutsceneArt';
+import { CONFIRM, artTexture, goTo } from '../ui/screens';
 import { RULES } from '../sim/rules';
 import { CHARACTERS, type CharacterId } from '../game/characters';
 import { DEFAULT_SETUP, difficultyParams, resolveChars, resolveVenue, type MatchSetup } from '../game/setup';
@@ -88,6 +93,10 @@ export class MatchScene extends Phaser.Scene {
   /** Diálogo de elección múltiple (el del pickleball): mientras está abierto, el partido espera. */
   private dialog: Dialog | null = null;
   private lastScoreCallPending = false;
+  /** HUD del relevo del Boss: retratos de la fila y latas. */
+  private relayHud: { slots: Map<string, Phaser.GameObjects.Image>; cans: Phaser.GameObjects.Image[] } | null = null;
+  /** Betty y Mabel mirando desde el costado (Boss). */
+  private fans: { betty: Phaser.GameObjects.Image; mabel: Phaser.GameObjects.Image } | null = null;
 
   constructor() {
     super('match');
@@ -105,6 +114,8 @@ export class MatchScene extends Phaser.Scene {
     this.trailPos = [];
     this.views = [];
     this.dialog = null;
+    this.relayHud = null;
+    this.fans = null;
   }
 
   create(): void {
@@ -114,32 +125,53 @@ export class MatchScene extends Phaser.Scene {
     const human1 = s.mode === '2p';
     const seed = s.seed ?? Math.floor(Math.random() * 1e9);
     const rng = createRng(seed ^ 0x9e3779b9);
-    const chars = resolveChars(s.chars, () => rng.next());
+    const boss = s.boss ?? null;
+    const tower = s.tower ?? null;
+    const chars: [CharacterId, CharacterId] = boss
+      ? [boss.run.player, currentRival(boss.relay) ?? 'elRosco']
+      : resolveChars(s.chars, () => rng.next());
     // Espejo (el mismo personaje de los dos lados): el de arriba usa el traje alternativo.
-    const outfits: [number, number] = [0, chars[0] === chars[1] ? 1 : 0];
+    const outfits: [number, number] = s.outfits ?? (boss ? [boss.run.outfit, 0] : [0, chars[0] === chars[1] ? 1 : 0]);
     this.names = [T.characters[chars[0]].name, T.characters[chars[1]].name];
 
-    const personalities = [personalityFor(chars[0], diff.ai), personalityFor(chars[1], diff.ai)];
+    // En la torre la CPU se pone más difícil a medida que se sube (y el Boss, un poco más).
+    const step = boss ? BOSS_STEP : tower ? tower.ctx.run.step : null;
+    const ramp = step !== null ? towerRamp(step) : { errorMul: 1, reaction: 0 };
+    const aiProfile = { ...diff.ai, reaction: Math.max(0.08, diff.ai.reaction + ramp.reaction) };
+    const personalities = [personalityFor(chars[0], aiProfile), personalityFor(chars[1], aiProfile)];
+    // Ventajas: chicana ganada o perdida, y los rivales del Boss con el primer paso de la receta.
+    const extra: [Partial<PlayerSetup>, Partial<PlayerSetup>] = [{}, {}];
+    if (tower?.duel === 'won') {
+      extra[0].startRecipe = [true, false, false];
+      extra[1].firstGameErrorMul = 1.3;
+    } else if (tower?.duel === 'lost') extra[1].startRecipe = [true, false, false];
+    if (boss) {
+      extra[0].startRecipe = boss.recipe;
+      extra[1].startRecipe = [true, false, false];
+    }
     const setupFor = (human: boolean, id: CharacterId, side: Side) => ({
       stats: CHARACTERS[id].stats,
       short: CHARACTERS[id].short,
       slowStart: CHARACTERS[id].slowStart,
       charId: id,
       human,
-      errorMul: human ? 1 : diff.cpuErrorMul * personalities[side].errorMul,
+      errorMul: human ? 1 : diff.cpuErrorMul * personalities[side].errorMul * ramp.errorMul,
       assist: human ? diff.humanAssist : 0,
       serveMeterHalfPeriod: human ? diff.humanMeterHalf : 0.42,
+      ...extra[side],
     });
-    const venue = resolveVenue(s.venue, () => rng.next());
+    const venue = boss ? 'chattahoochee' : resolveVenue(s.venue, () => rng.next());
     this.match = new Match({
-      rules: { gamesPerSet: s.games },
+      // Relevo del Boss: cada game es un mini partido, con punto de oro después de 3 iguales.
+      rules: boss ? { gamesPerSet: 1, goldenPointAfterDeuces: 3 } : { gamesPerSet: s.games },
       venue,
       players: [
         { name: this.names[0], ...setupFor(human0, chars[0], 0) },
         { name: this.names[1], ...setupFor(human1, chars[1], 1) },
       ],
       seed,
-      firstServer: seed % 2 === 0 ? 0 : 1,
+      // En el relevo el saque alterna game a game, como en un partido normal.
+      firstServer: boss ? (boss.relay.games % 2 === 0 ? 0 : 1) : seed % 2 === 0 ? 0 : 1,
     });
     this.brains = [
       human0 ? null : new CpuBrain(0, personalities[0], rng),
@@ -187,9 +219,113 @@ export class MatchScene extends Phaser.Scene {
       call: (t, ms) => this.call(t, ms),
     });
 
+    if (boss) this.setupBoss(boss);
+    if (chars.includes('donGanso')) this.time.delayedCall(1200, () => this.say(T.mystique.primo, 3600));
+
     keyboard.install();
     (window as unknown as { __cht: unknown }).__cht = { scene: this, match: this.match };
     this.handleEvents(this.match.drainEvents());
+  }
+
+  // ------------------------------------------------------------------ Boss: relevo por games
+
+  private setupBoss(b: BossCtx): void {
+    const g = this.add.graphics().setDepth(9000);
+    const order = [...b.relay.queue, ...b.relay.eliminated];
+    const x0 = 214;
+    drawBox(g, x0, 3, 5 * 27 + 50, 31, 0x14131c, 0x3a3850, 0.85);
+    const slots = new Map<string, Phaser.GameObjects.Image>();
+    order.forEach((id, i) => {
+      const x = x0 + 16 + i * 27;
+      const out = b.relay.eliminated.includes(id);
+      const img = this.add.image(x, 18, ensureCharacterTextures(this, id, 0).portrait, out ? 'lose' : 'normal').setScale(0.25).setDepth(9001);
+      if (out) {
+        img.setTint(0x555566);
+        this.stampOn(x, 18, false);
+      }
+      if (i === 0) g.lineStyle(1, UI.gold).strokeRect(x - 13, 5, 26, 26);
+      slots.set(id, img);
+    });
+    const cans: Phaser.GameObjects.Image[] = [];
+    artTexture(this, 'canFull', () => drawCan(true));
+    artTexture(this, 'canEmpty', () => drawCan(false));
+    for (let i = 0; i < 3; i++) {
+      cans.push(this.add.image(x0 + 5 * 27 + 12 + i * 12, 18, i < b.relay.cans ? 'canFull' : 'canEmpty').setDepth(9001));
+    }
+    this.relayHud = { slots, cans };
+
+    // Betty y Mabel, la hinchada, al costado de la cancha.
+    ensureMystiqueTextures(this);
+    const bp = project(9.4, 4.5);
+    const mp = project(9.6, 7.5);
+    this.fans = {
+      betty: this.add.image(Math.round(bp.sx), Math.round(bp.sy), 'betty').setOrigin(0.5, 1).setDepth(bp.sy),
+      mabel: this.add.image(Math.round(mp.sx), Math.round(mp.sy), 'mabel').setOrigin(0.5, 1).setDepth(mp.sy),
+    };
+
+    // Presentación del game: quién toca ahora.
+    const rival = this.chars[1];
+    this.time.delayedCall(300, () => banner(this, T.boss.next(T.characters[rival].name), UI.red, 120, 1300));
+    if (b.relay.cans === 1) this.time.delayedCall(1800, () => this.say(T.boss.lastCan, 3000));
+    else this.time.delayedCall(1800, () => this.commentary.say(T.characters[rival].name, T.boss.intro[rival], 3000));
+  }
+
+  /** Sello rojo de ELIMINADO sobre un retratito del relevo. */
+  private stampOn(x: number, y: number, animate: boolean): void {
+    const t = pxText(this, x, y, T.boss.eliminated, { outline: true, color: UI.red }).setOrigin(0.5).setAngle(-18).setDepth(9002);
+    if (animate) {
+      t.setScale(4).setAlpha(0);
+      this.tweens.add({ targets: t, scale: 0.9, alpha: 1, duration: 260, ease: 'Back.In', onComplete: () => sfx.stamp() });
+    } else t.setScale(0.9);
+  }
+
+  /** Betty y Mabel reaccionan a cada punto. */
+  private cheer(winner: Side): void {
+    const f = this.fans;
+    if (!f) return;
+    const who = winner === 0 ? f.betty : f.mabel;
+    this.tweens.add({ targets: who, y: who.y - 6, duration: 110, yoyo: true, repeat: 1 });
+    if (Math.random() < 0.5) {
+      const text = who === f.betty ? pick(T.boss.betty) : pick(T.boss.mabel);
+      if (who === f.mabel) sfx.ding();
+      else sfx.betty();
+      const b = new Bubble(this);
+      b.show(text, Math.round(who.x), Math.round(who.y - 26), 1100);
+      this.time.delayedCall(1300, () => b.destroy());
+    }
+  }
+
+  /** Terminó un game del relevo. */
+  private bossGameEnd(winner: Side): void {
+    const b = this.setup.boss!;
+    const won = winner === 0;
+    const relay = relayGame(b.relay, won);
+    const recipe = [...this.match.myst.states[0].recipe] as [boolean, boolean, boolean];
+    const rival = this.chars[1];
+    const hud = this.relayHud;
+    if (won) {
+      const slot = hud?.slots.get(rival);
+      if (slot) {
+        slot.setTint(0x555566).setFrame('lose');
+        this.stampOn(slot.x, slot.y, true);
+      }
+      banner(this, T.boss.eliminated, UI.red, 150, 1600);
+      this.say(pick(T.boss.wonGame), 2600);
+    } else {
+      const can = hud?.cans[relay.cans];
+      if (can) {
+        this.tweens.add({ targets: can, angle: 90, y: can.y + 4, duration: 300, onComplete: () => can.setTexture('canEmpty').setAngle(0) });
+      }
+      banner(this, T.boss.backInLine(T.characters[rival].name), UI.gold, 150, 1600);
+      this.say(pick(T.boss.lostCan), 2600);
+      sfx.whiff();
+    }
+    this.time.delayedCall(2800, () => {
+      const next: BossCtx = { ...b, relay, recipe, fresh: false };
+      if (relay.state === 'won') goTo(this, 'bossWin', { boss: next });
+      else if (relay.state === 'lost') goTo(this, 'gameover', { boss: next });
+      else goTo(this, 'match', { ...this.setup, boss: next, seed: undefined });
+    });
   }
 
   // ------------------------------------------------------------------ HUD
@@ -322,6 +458,11 @@ export class MatchScene extends Phaser.Scene {
 
   private handleGlobalKeys(): void {
     if (this.endUi.length) {
+      const tw = this.setup.tower;
+      if (tw) {
+        if (keyboard.anyPressed(CONFIRM)) this.towerNext();
+        return;
+      }
       if (keyboard.anyPressed(['Enter', 'Space', 'KeyZ'])) this.scene.restart(this.setup);
       else if (keyboard.wasPressed('Escape')) this.scene.start('testMenu', this.setup);
       return;
@@ -424,7 +565,8 @@ export class MatchScene extends Phaser.Scene {
           this.onScore(e.events);
           break;
         case 'matchOver':
-          this.time.delayedCall(1400, () => this.showEnd(e.winner));
+          if (this.setup.boss) this.time.delayedCall(900, () => this.bossGameEnd(e.winner));
+          else this.time.delayedCall(1400, () => this.showEnd(e.winner));
           break;
         default:
           break;
@@ -442,6 +584,7 @@ export class MatchScene extends Phaser.Scene {
       this.say(pick(T.comments.ace));
     }
     if (e.rally >= 12) this.say(pick(T.comments.longRally));
+    if (this.setup.boss) this.cheer(e.winner);
     const loser = this.match.players[e.loser];
     if (loser.anim === 'dive' && e.reason === 'winner') this.say(pick(T.comments.diveMiss));
     this.lastScoreCallPending = true;
@@ -450,6 +593,8 @@ export class MatchScene extends Phaser.Scene {
   private onScore(events: ScoreEvent[]): void {
     const names = this.names;
     for (const ev of events) {
+      // En el relevo del Boss cada game es un "partido": no se canta set ni partido.
+      if (this.setup.boss && (ev.type === 'set' || ev.type === 'match')) continue;
       if (ev.type === 'game') {
         this.lastScoreCallPending = false;
         this.call(T.calls.game(names[ev.winner]));
@@ -710,6 +855,16 @@ export class MatchScene extends Phaser.Scene {
     this.pauseUi = [];
   }
 
+  /** Torre: ganó → sube un escalón; perdió → ¿CONTINUAR? */
+  private towerNext(): void {
+    const tw = this.setup.tower!;
+    const sc = this.match.score;
+    if (sc.winner === 0) {
+      const set = sc.completedSets[0];
+      goTo(this, 'tower', { ctx: { ...tw.ctx, run: winStep(tw.ctx.run, set ? `${set[0]}-${set[1]}` : '') }, climbed: true });
+    } else goTo(this, 'gameover', { tower: tw.ctx });
+  }
+
   private showEnd(winner: Side): void {
     if (this.paused) this.closePause();
     const m = this.match;
@@ -747,7 +902,18 @@ export class MatchScene extends Phaser.Scene {
       ui.push(pxText(this, 400, y, f(m.players[0]), { color: UI.gold }).setOrigin(0.5, 0).setDepth(9951));
       ui.push(pxText(this, 470, y, f(m.players[1]), { color: UI.gold }).setOrigin(0.5, 0).setDepth(9951));
     });
-    ui.push(pxText(this, 320, 290, T.end.again, { outline: true, color: UI.dim }).setOrigin(0.5, 0).setDepth(9951));
+    // La estadística absurda de cada uno (las cargadas, con nombre propio).
+    const absurd = ([0, 1] as Side[]).map((sd) => `${this.names[sd]}: ${T.result.absurd[this.chars[sd]]} ${m.players[sd].counters.taunts}`).join('  ·  ');
+    ui.push(pxText(this, 320, 280, absurd, { color: UI.cyan }).setOrigin(0.5, 0).setDepth(9951));
+    const tw = this.setup.tower;
+    const again = tw ? (winner === 0 ? T.result.towerNext : T.result.towerLost) : T.end.again;
+    if (tw)
+      ui.push(
+        pxText(this, 320, 36, winner === 0 ? T.result.won : T.result.lost, { outline: true, color: winner === 0 ? UI.green : UI.red, scale: 2 })
+          .setOrigin(0.5, 0)
+          .setDepth(9951),
+      );
+    ui.push(pxText(this, 320, 294, again, { outline: true, color: UI.dim }).setOrigin(0.5, 0).setDepth(9951));
     this.endUi = ui;
     void other;
   }

@@ -23,6 +23,7 @@ const CLUB_COLORS: Record<CharacterId, [number, number]> = {
   volpi: [0xf6f3ea, 0xd7262d],
   elVikingo: [0x6e6a7c, 0xa0592e],
   angelito: [0xf5c42c, 0x2b2735],
+  donGanso: [0x23232a, 0xc7373b],
 };
 
 export interface FxOptions {
@@ -168,6 +169,7 @@ export class MystiqueFx {
       case 'passive':
         if (e.id === 'poker') this.o.say(pick(T.mystique.poker), 3000);
         if (e.id === 'carcajada') this.o.say(pick(T.mystique.carcajada));
+        if (e.id === 'autoridad') this.o.say(pick(T.mystique.autoridad));
         return 0;
       case 'weakness':
         if (e.id === 'tienta') this.o.say(pick(T.mystique.tentado));
@@ -385,7 +387,7 @@ export class MystiqueFx {
         }
       }
       // Dinein: estela azul y amarilla.
-      if (p.mods.pointBuff === 'dinein' && Math.hypot(p.vx, p.vy) > 2 && Math.random() < 0.6) {
+      if ((p.mods.pointBuff === 'dinein' || p.mods.pointBuff === 'vuelo') && Math.hypot(p.vx, p.vy) > 2 && Math.random() < 0.6) {
         const pos = project(p.x, p.y);
         this.puff(pos.sx - Math.sign(p.vx) * 8, pos.sy - 12 - Math.random() * 20, Math.random() < 0.5 ? 0x1f45a6 : 0xf5c42c, 10);
       }

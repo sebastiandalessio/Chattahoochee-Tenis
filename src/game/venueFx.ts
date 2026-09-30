@@ -98,14 +98,14 @@ export class VenueFx {
     this.m = m;
     this.id = id;
     this.o = o;
-    // Fondo y luz.
-    const paint = paintVenue(id);
-    addCanvasTexture(scene, `venueBg_${id}`, imageToCanvas(paint.background));
-    scene.add.image(0, 0, `venueBg_${id}`).setOrigin(0).setDepth(-10000);
-    if (paint.overlay) {
-      addCanvasTexture(scene, `venueOv_${id}`, imageToCanvas(paint.overlay));
-      scene.add.image(0, 0, `venueOv_${id}`).setOrigin(0).setDepth(9300);
+    // Fondo y luz (se pintan una sola vez por sede: después se reusa la textura).
+    if (!scene.textures.exists(`venueBg_${id}`)) {
+      const paint = paintVenue(id);
+      addCanvasTexture(scene, `venueBg_${id}`, imageToCanvas(paint.background));
+      if (paint.overlay) addCanvasTexture(scene, `venueOv_${id}`, imageToCanvas(paint.overlay));
     }
+    scene.add.image(0, 0, `venueBg_${id}`).setOrigin(0).setDepth(-10000);
+    if (scene.textures.exists(`venueOv_${id}`)) scene.add.image(0, 0, `venueOv_${id}`).setOrigin(0).setDepth(9300);
     if (id === 'stRegis') {
       const s = project(0, -(m.venue?.fenceY ?? 14.2) - 0.2, 1.9);
       pxText(scene, Math.round(s.sx), Math.round(s.sy), T.venues.windscreen, { outline: true, color: 0xf3f1ea })

@@ -3,6 +3,14 @@ import { SCREEN_H, SCREEN_W } from './game/projection';
 import { BootScene } from './scenes/BootScene';
 import { MatchScene } from './scenes/MatchScene';
 import { TestMenuScene } from './scenes/TestMenuScene';
+import { CharSelectScene } from './scenes/CharSelectScene';
+import { TowerScene } from './scenes/TowerScene';
+import { VsScene } from './scenes/VsScene';
+import { DuelScene } from './scenes/DuelScene';
+import { GameOverScene } from './scenes/GameOverScene';
+import { BossIntroScene } from './scenes/BossIntroScene';
+import { BossWinScene } from './scenes/BossWinScene';
+import { EndingScene } from './scenes/EndingScene';
 
 /** Zoom entero más grande que entra en la ventana (pixel art sin deformar). */
 function integerZoom(): number {
@@ -25,8 +33,11 @@ const game = new Phaser.Game({
   // ?timer=1 usa setTimeout en vez de requestAnimationFrame (útil en navegadores de prueba sin foco).
   fps: { target: 60, forceSetTimeOut: new URLSearchParams(window.location.search).has('timer') },
   input: { keyboard: false, gamepad: true },
-  scene: [BootScene, TestMenuScene, MatchScene],
+  scene: [BootScene, TestMenuScene, MatchScene, CharSelectScene, TowerScene, VsScene, DuelScene, GameOverScene, BossIntroScene, BossWinScene, EndingScene],
 });
+
+// Para las pruebas automáticas (qué pantalla está activa).
+(window as unknown as { __game: Phaser.Game }).__game = game;
 
 const refit = () => game.scale.setZoom(integerZoom());
 window.addEventListener('resize', refit);

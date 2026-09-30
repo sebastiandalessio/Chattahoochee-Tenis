@@ -72,6 +72,112 @@ try {
     console.log('  corre:', s ? `sí (fase ${s.phase}, t=${s.time.toFixed(1)}s)` : 'NO');
   }
 
+  // ------------------------------------------------------------ torre, chicanas, Boss y finales (npm run playtest -- torre)
+  if (which === 'pantallas') {
+    const scenes = () =>
+      page.evaluate(() => {
+        const g = window.__game;
+        return g ? g.scene.getScenes(true).map((x) => x.sys.settings.key) : [];
+      });
+    const go = async (q, name, wait = 1500) => {
+      await page.goto(`${base}?${q}`);
+      await sleep(wait);
+      await shot(name);
+      console.log('  ', name, JSON.stringify(await scenes()));
+    };
+    console.log('Pantallas del hito 5');
+    await go('select=1', '20-seleccion');
+    await page.keyboard.press('ArrowRight');
+    await sleep(400);
+    await shot('20-seleccion-seba');
+    await go('tower=volpi&step=2', '21-torre', 1800);
+    await go('tower=elRosco&step=5', '21-torre-boss', 1800);
+    await go('vs=elRosco&seed=3', '22-vs', 1500);
+    // Buscar una torre donde el primer rival sea un clásico (Rosco contra Tincho).
+    for (let seed = 1; seed < 40; seed++) {
+      const ok = await page.evaluate(async (sd) => {
+        const m = await import('/src/game/tower.ts');
+        const c = await import('/src/scenes/CharSelectScene.ts');
+        return m.newTower('elRosco', 0, c.mulberry(sd), sd).fights[0].rival === 'trueTincho';
+      }, seed);
+      if (ok) {
+        await go(`vs=elRosco&seed=${seed}`, '22-vs-clasico', 2600);
+        break;
+      }
+    }
+    await go('duel=angelito&seed=4', '23-chicana', 2200);
+    await page.keyboard.press('ArrowDown');
+    await sleep(200);
+    await page.keyboard.press('Enter');
+    await sleep(2600);
+    await shot('23-chicana-respuesta');
+    await go('gameover=elVikingo', '24-gameover', 1200);
+    await sleep(4500);
+    await shot('24-gameover-impaciente');
+    await go('boss=trueTincho', '25-boss-llegada', 2500);
+    await sleep(5000);
+    await shot('25-boss-bajando');
+    await sleep(6000);
+    await shot('25-boss-reglas');
+    await go('bossmatch=volpi&auto=1&speed=1', '26-boss-relevo', 3500);
+    await go('bosswin=angelito', '27-boss-festejo', 2000);
+    await sleep(3200);
+    await shot('27-boss-al-rio');
+    for (const who of ['elRosco', 'elSeba', 'trueTincho', 'volpi', 'elVikingo', 'angelito']) {
+      await page.goto(`${base}?ending=${who}`);
+      for (let i = 0; i < 3; i++) {
+        await sleep(i === 0 ? 2200 : 1600);
+        await shot(`28-final-${who}-${i + 1}`);
+        await page.keyboard.press('Enter');
+      }
+      await sleep(1200);
+      await shot(`28-final-${who}-desbloqueo`);
+    }
+  }
+
+  if (which === 'torre') {
+    // Una torre entera jugada por la CPU (con ?auto=1), apretando ENTER en cada pantalla.
+    console.log('Torre completa en automático');
+    const scenes = () =>
+      page.evaluate(() => {
+        const g = window.__game;
+        return g ? g.scene.getScenes(true).map((x) => x.sys.settings.key) : [];
+      });
+    // Partidos cortos (2 games) para que la prueba no tarde tanto.
+    await page.goto(base);
+    await page.evaluate(() => localStorage.setItem('chattahoochee-tenis-v1', JSON.stringify({ options: { games: 2, difficulty: 1 } })));
+    await page.goto(`${base}?tower=elSeba&auto=1&speed=8&seed=5`);
+    const t0 = Date.now();
+    let last = '';
+    const seen = new Set();
+    while (Date.now() - t0 < 1500000) {
+      const sc = (await scenes()).join(',');
+      if (sc !== last) {
+        console.log('   →', sc);
+        last = sc;
+      }
+      if (sc === 'ending' || sc === 'testMenu') break;
+      if (!seen.has(sc) && ['tower', 'vs', 'duel', 'gameover', 'bossIntro', 'bossWin'].includes(sc)) {
+        seen.add(sc);
+        await sleep(900);
+        await shot(`29-torre-${sc}`);
+      }
+      if (sc !== 'match') await page.keyboard.press('Enter');
+      else {
+        const st = await page.evaluate(() => {
+          const c = window.__cht;
+          return c ? { phase: c.match.phase, end: c.scene.endUi?.length ?? 0 } : null;
+        });
+        if (st && st.end) {
+          await shot('29-torre-resultado');
+          await page.keyboard.press('Enter');
+        }
+      }
+      await sleep(700);
+    }
+    console.log('  terminó en', last, 'en', Math.round((Date.now() - t0) / 1000), 's');
+  }
+
   // ------------------------------------------------------------ sedes y eventos (npm run playtest -- sedes)
   if (which === 'sedes') {
     const only = process.argv[3];

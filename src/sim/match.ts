@@ -82,6 +82,10 @@ export interface PlayerSetup {
   slowStart?: boolean;
   /** Medio período del medidor de saque, en segundos (más grande = más fácil). */
   serveMeterHalfPeriod?: number;
+  /** Receta con pasos ya tildados al empezar (chicana ganada, rivales del Boss, relevo). */
+  startRecipe?: [boolean, boolean, boolean];
+  /** Error extra durante el primer game ("arranca calentito" después de perder la chicana). */
+  firstGameErrorMul?: number;
 }
 
 export interface MatchConfig {
@@ -183,7 +187,7 @@ export interface PlayerMods {
   /** Especial de golpe cargado para el próximo golpe. */
   armed: SpecialId | null;
   /** Especial que dura el resto del punto. */
-  pointBuff: 'dinein' | 'minicargadora' | null;
+  pointBuff: 'dinein' | 'minicargadora' | 'vuelo' | null;
   /** Rosco: se le trabó la espalda hasta el final del game. */
   lumbar: boolean;
   /** Volpi: se tentó; su próximo primer saque sale flojo. */
@@ -337,7 +341,7 @@ export class Match {
   longestRally = 0;
   /** Pelotas fantasma de Betty (solo se ven: desaparecen al picar). */
   ghosts: Ghost[] = [];
-  /** Zona en obra que deja la minicargadora (pique al azar), hasta el final del game. */
+  /** Zona en obra que deja la minicargadora (pique al azar), hasta que termina el punto. */
   obra: { side: Side; x: number; y: number; r: number } | null = null;
   /** Posición de Betty cuando dispara (para dibujarla). */
   betty: { side: Side; x: number; y: number; t: number } | null = null;
@@ -357,7 +361,17 @@ export class Match {
     this.venueEv = new VenueEvents(this, this.venue);
     this.score = newMatch(cfg.rules ?? {}, cfg.firstServer ?? 0);
     this.rally = new Rally(this.score.server, serveSide(this.score));
+    for (const p of this.players)
+      p.setup.startRecipe?.forEach((done, i) => {
+        if (done) this.myst.tick(p, i as 0 | 1 | 2);
+      });
     this.setupPoint();
+  }
+
+  /** Multiplicador de error de un jugador (dificultad, y "calentito" en el primer game). */
+  errorMulOf(p: PlayerSim): number {
+    const firstGame = this.score.games[0] + this.score.games[1] === 0 && this.score.completedSets.length === 0;
+    return (p.setup.errorMul ?? 1) * (firstGame ? (p.setup.firstGameErrorMul ?? 1) : 1);
   }
 
   drainEvents(): MatchEvent[] {
@@ -424,6 +438,8 @@ export class Match {
       p.air = Math.min(1, p.air + 0.6);
     }
     this.placeBallInHand();
+    // La obra de la minicargadora dura lo que dura el punto (en el segundo saque sigue).
+    if (fresh) this.obra = null;
     this.myst.onPointStart();
     for (const p of this.players) p.mods.slipShown = false;
     this.push({ type: 'pointStart', server: this.rally.server, serveSide: side, attempt: this.attempt, fresh });
@@ -572,7 +588,8 @@ export class Match {
         power,
         aimX: srv.input.moveX,
         serveSide: this.rally.serveSide,
-        errorMul: (srv.setup.errorMul ?? 1) * srv.mods.serveErrorMul,
+        errorMul: this.errorMulOf(srv) * srv.mods.serveErrorMul,
+        second: this.attempt === 2,
       },
       this.rng,
     );
@@ -731,10 +748,7 @@ export class Match {
       const { score, events } = pointWon(this.score, pend.winner);
       this.score = score;
       const gameEnded = events.some((e) => e.type === 'game');
-      if (gameEnded) {
-        this.obra = null;
-        for (const p of this.players) p.mods.lumbar = false;
-      }
+      if (gameEnded) for (const p of this.players) p.mods.lumbar = false;
       this.myst.onScoreChanged(gameEnded);
       this.push({ type: 'score', events, score });
       if (score.winner !== null) {
@@ -840,6 +854,8 @@ export class Match {
       p.mods.armed = id;
     } else if (id === 'dinein') {
       p.mods.pointBuff = 'dinein';
+    } else if (id === 'vuelo') {
+      p.mods.pointBuff = 'vuelo';
     } else if (id === 'minicargadora') {
       p.mods.pointBuff = 'minicargadora';
       const rival = other(p.side);
@@ -916,7 +932,7 @@ export class Match {
       this.contact(p, 'hit', 0.3, false, { auto: true });
     } else if (
       forMe &&
-      buff === 'dinein' &&
+      (buff === 'dinein' || buff === 'vuelo') &&
       this.rally.bouncesSinceHit === 0 &&
       Math.abs(p.y) < 7 &&
       zi.inDepth &&
@@ -1026,7 +1042,7 @@ export class Match {
     let aimDepth = p.input.moveY * p.facing;
     let aimX = p.input.moveX;
     const incomingTag = b.tag ?? null;
-    let errorMul = (p.setup.errorMul ?? 1) * (p.air < 0.15 ? 1.25 : 1);
+    let errorMul = this.errorMulOf(p) * (p.air < 0.15 ? 1.25 : 1);
     let forceMiss: 'net' | 'out' | undefined;
 
     // Los especiales automáticos apuntan al hueco y casi no fallan.
@@ -1234,12 +1250,15 @@ export class Match {
       ix /= len;
       iy /= len;
     }
+    // Don Ganso, patas cortas: para atrás camina como pato (salvo volando).
+    if (p.setup.charId === 'donGanso' && iy * p.facing < -0.2 && p.mods.pointBuff !== 'vuelo') iy *= 0.75;
     let mul = p.airFactor();
     // Cargando (botón apretado) se mueve lento; si ya soltó, solo espera la pelota.
     if (p.prep && !p.prep.released) mul *= 0.55;
     if (p.sliceWindow) mul *= 0.4;
     if (p.swingT > 0) mul *= 0.4;
     if (p.mods.pointBuff === 'dinein') mul *= 1.6;
+    if (p.mods.pointBuff === 'vuelo') mul *= 1.7;
     if (p.mods.pointBuff === 'minicargadora') mul *= 1.8;
     if (p.mods.lumbar) mul *= 0.6;
     const max = p.phys.maxSpeed * mul;

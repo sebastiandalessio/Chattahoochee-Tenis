@@ -250,6 +250,8 @@ export interface ServeRequest {
   aimX: number;
   serveSide: 'deuce' | 'ad';
   errorMul: number;
+  /** Segundo saque: más seguro (más arco, más adentro del cuadro, menos error). */
+  second?: boolean;
 }
 
 export function serviceBoxSign(server: Side, serveSide: 'deuce' | 'ad'): number {
@@ -263,19 +265,25 @@ export function computeServe(req: ServeRequest, rng: Rng): ShotResult {
   const boxSign = serviceBoxSign(req.side, req.serveSide);
   // Hacia la línea lateral = abierto; hacia el centro = a la T.
   const toward = req.aimX * boxSign;
-  const ax = toward > 0.3 ? 3.3 : toward < -0.3 ? 0.7 : 2.0;
-  const intended = { x: ax * boxSign, y: facing * (COURT.serviceLine - 1.1) };
+  const second = !!req.second;
+  const ax = toward > 0.3 ? (second ? 3.0 : 3.3) : toward < -0.3 ? (second ? 0.9 : 0.7) : 2.0;
+  const intended = { x: ax * boxSign, y: facing * (COURT.serviceLine - (second ? 1.6 : 1.1)) };
   const power = clamp(req.power, 0, 1);
-  const v = 15.5 + power * 11 + (req.stats.saque - 5) * 0.6;
+  // El stat de Saque da un poco de velocidad y, sobre todo, consistencia: un buen sacador
+  // no tiene por qué errar más que uno malo por sacar más rápido.
+  const v = (16.3 + power * 11.5 + (req.stats.saque - 5) * 0.5) * (second ? 0.92 : 1);
   const gMul = 1.25;
   const flat = Math.hypot(intended.x - req.from.x, intended.y - req.from.y);
+  // Margen sobre la red: más en el segundo saque (con efecto) y en los saques lentos.
+  const margin = (second ? 0.35 : 0.14) + 0.2 * (1 - power);
   let T = flat / v;
   for (let i = 0; i < 40; i++) {
     const c = netClearance(req.from, solveLaunch(req.from, intended, T, gMul), gMul);
-    if (c === null || c >= 0.1) break;
+    if (c === null || c >= margin) break;
     T *= 1.04;
   }
-  const sigma = (0.15 + 1.1 * power ** 3) * (1.45 - req.stats.saque * 0.08) * req.errorMul;
+  const saqueK = clamp(1.6 - req.stats.saque * 0.12, 0.45, 1.5);
+  const sigma = (0.15 + 1.1 * power ** 3) * saqueK * req.errorMul * (second ? 0.8 : 1);
   const target = {
     x: intended.x + rng.gauss() * sigma,
     y: intended.y + rng.gauss() * sigma * 1.2 * facing,

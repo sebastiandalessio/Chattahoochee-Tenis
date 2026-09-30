@@ -7,9 +7,11 @@ export const T = {
   // ---------------------------------------------------------------- menú de prueba (hito 1)
   testMenu: {
     heading: 'PARTIDO DE PRUEBA',
-    sub: 'Hito 4: con mística, especiales, sedes y un ganso de umpire.',
+    sub: 'Hito 5: torre, chicanas, el Boss y los finales.',
     mode: 'Modo',
     modes: ['Vos contra la CPU', '2 jugadores', 'CPU contra CPU (mirar)'],
+    tower: 'TORRE DE LOS CHATTAHOOCHEES',
+    towerHint: '(la torre usa la duración y la dificultad de acá)',
     length: 'Duración',
     lengths: ['2 games (rápido)', '4 games', '6 games (set completo)'],
     difficulty: 'Dificultad',
@@ -170,6 +172,16 @@ export const T = {
       taunt: 'Saca una llave inglesa y "ajusta" la red.',
       phrases: ['¡Eso lo arreglo yo!', '¿Dónde estaba el centro?', 'Esta cancha necesita una nivelación.'],
     },
+    donGanso: {
+      name: 'DON GANSO',
+      club: 'Umpire con licencia (vencida)',
+      bio: 'Ganso canadiense, moño rojo y opiniones muy firmes. Cantó miles de puntos. Hoy juega uno. Promete ser imparcial consigo mismo.',
+      special: ['¡VUELO RASANTE!', 'Despega: velocidad x1,7 y volea imán durante un punto.'],
+      passive: ['Autoridad', 'Después de ganar un punto, su "¡HONK!" pone nervioso al que saca.'],
+      weakness: ['Patas cortas', 'Para los costados vuela; para atrás camina como pato.'],
+      taunt: 'Abre las alas y grazna.',
+      phrases: ['¡HONK!', 'Esa fue adentro. Lo digo yo.', 'Tengo opiniones muy firmes sobre tu revés.'],
+    },
   },
   statNames: ['Velocidad', 'Potencia', 'Control', 'Saque', 'Volea', 'Aire'],
 
@@ -216,6 +228,7 @@ export const T = {
     betty: { name: '¡DALE, BETTY!', line: 'Betty, mi amor, ahora sí.' },
     frita: { name: 'MABEL, A 200 GRADOS', line: '¡DING! Pelota frita.' },
     minicargadora: { name: '¡LLEGÓ LA MINICARGADORA!', line: '¡Eso lo arreglo yo!' },
+    vuelo: { name: '¡VUELO RASANTE!', line: 'Despejen la cancha: el umpire despega.' },
   } as Record<string, { name: string; line: string }>,
   /** Lo que dice Don Ganso cuando el especial gana el punto. */
   specialWins: {
@@ -225,6 +238,7 @@ export const T = {
     betty: 'Betty eligió bien. Vos, no tanto.',
     frita: 'Pelota frita, manos fritas.',
     minicargadora: 'Obra terminada. La cancha, no tanto.',
+    vuelo: 'Punto aprobado por el umpire. O sea, por él mismo.',
   } as Record<string, string>,
   /** Globitos que dicen los personajes. */
   emotes: {
@@ -248,6 +262,7 @@ export const T = {
     volpi: '¡JAJAJA!',
     elVikingo: '♪ ¡Valhalla! ♪',
     angelito: '¡Eso lo arreglo yo!',
+    donGanso: '¡HONK!',
   } as Record<string, string>,
   mystique: {
     exento: 'EXENTO',
@@ -265,6 +280,8 @@ export const T = {
     apurado: ['Se apuró. Como siempre. Como nunca.'],
     confused: ['El Vikingo en la red: territorio desconocido.'],
     carcajada: ['Rosco se ríe. Esa carcajada se contagia... al próximo saque.'],
+    autoridad: ['¡HONK! La autoridad habló. El que saca, tiembla.', 'Graznido reglamentario. El próximo saque viene nervioso.'],
+    primo: 'Hoy canto yo, el primo. Mi primo juega. Somos gansos, no se nos nota la diferencia.',
     burn: ['Se quemó las manos con la pelota frita. Se lo advirtieron.'],
     obra: ['ZONA EN OBRA. Cuidado con el bache.'],
     obraBounce: ['¡El bache! Pique al azar, cortesía de Angelito.'],
@@ -340,6 +357,272 @@ export const T = {
         comment: ['Diplomacia deportiva. Anotado en el acta.', 'Don Ganso aprueba esa respuesta. Más o menos.'],
       },
     },
+  },
+
+  // ---------------------------------------------------------------- trajes
+  outfits: {
+    elRosco: ['Rayas rojinegras', 'Rojo Independiente'],
+    elSeba: ['Azul y oro', 'Chaleco de pesca', 'Modo Diplomático'],
+    trueTincho: ['Racing', 'Rayas celestes'],
+    volpi: ['Banda roja', 'Remera negra'],
+    elVikingo: ['Remera gris', 'Casco vikingo'],
+    angelito: ['Remera negra', 'Handyman'],
+    donGanso: ['Plumas y moño', 'Saco de umpire'],
+  } as Record<string, string[]>,
+
+  // ---------------------------------------------------------------- selección de personaje
+  select: {
+    title: 'ELEGÍ TU JUGADOR',
+    special: 'Especial',
+    passive: 'Pasiva',
+    weakness: 'Debilidad',
+    outfit: 'Traje',
+    outfitLocked: '(ganá la torre para desbloquear otro)',
+    towerDone: '¡Torre ganada!',
+    help: '←→↑↓ elegir · X cambiar traje · ENTER confirmar · ESC volver',
+  },
+
+  // ---------------------------------------------------------------- torre
+  tower: {
+    title: 'TORRE DE LOS CHATTAHOOCHEES',
+    boss: 'EL GRAN CHATTAHOOCHEE',
+    bossWho: '¿¿¿???',
+    next: 'Próximo rival',
+    at: 'en',
+    help: 'ENTER: ¡a jugar! · ESC: abandonar la torre',
+    climb: ['Un escalón más. La escalera no tiene ascensor.', 'Subiendo. Don Ganso aplaude con las alas.', 'Arriba se ve el río. Y algo raro en un kayak.'],
+    start: ['Cinco rivales, un Boss y ningún quiropráctico cerca.', 'La torre te espera. Don Ganso también, pero él siempre espera.'],
+    abandonQ: '¿Abandonás la torre? (ENTER sí · ESC no)',
+    // Betty (la lanzapelotas) y Mabel (la freidora) se van conociendo entre partido y partido.
+    romance: [
+      ['BETTY: BIP. ¿VENÍS SEGUIDO A LA TORRE?', 'MABEL: ¡DING! Solo cuando hay fritura.'],
+      ['BETTY: TE LANZO UNA PELOTA. ES UN CUMPLIDO.', 'MABEL: La freí. También es un cumplido.'],
+      ['BETTY: MI TOLVA SE LLENA CUANDO TE VEO.', 'MABEL: (se pone colorada a 200 grados)'],
+      ['MABEL: ¿Compartimos una papa frita?', 'BETTY: AFIRMATIVO. CORAZÓN AL 100%.'],
+      ['BETTY: MABEL. TENGO UNA PREGUNTA IMPORTANTE.', 'MABEL: ¡DING DING DING DING!'],
+      ['Betty y Mabel miran el río, juntas.', 'Hay rumores de casamiento. Don Ganso no confirma.'],
+    ],
+  },
+
+  // ---------------------------------------------------------------- VS
+  vs: {
+    vs: 'VS',
+    clasico: { avellaneda: '¡CLÁSICO DE AVELLANEDA!', superclasico: '¡SUPERCLÁSICO!' } as Record<string, string>,
+    clasicoSay: {
+      avellaneda: ['Rojos contra celestes. Separados por dos cuadras y un odio muy cariñoso.', 'Avellaneda se paraliza. Bueno, Atlanta no, pero Avellaneda sí.'],
+      superclasico: ['Boca contra River. Don Ganso se pone el casco.', 'El Superclásico llega al Chattahoochee. Los gansos piden neutralidad.'],
+    } as Record<string, string[]>,
+    mediador: 'Angelito, desde la tribuna: "Muchachos, esto se arregla con una minicargadora."',
+    tips: [
+      'Consejo: no le prestes la raqueta a Angelito, la va a querer arreglar.',
+      'Consejo: si el Vikingo sube a la red, dejalo. Se va a perder solo.',
+      'Consejo: la sombra de la pelota dice dónde va a picar. La pelota miente, la sombra no.',
+      'Consejo: hacé correr al Rosco. Su espalda te lo va a agradecer. Él no.',
+      'Consejo: no le hagas cargadas a Tincho. Te va a mirar. Nada más. Es peor.',
+      'Consejo: a Volpi hacele una cargada antes de que saque. Se tienta.',
+      'Consejo: globeá a Angelito. Mide lo que mide.',
+      'Consejo: si ves a Betty, no te enamores. Ya está comprometida.',
+      'Sí, esta pantalla de carga es falsa. Nos gusta el suspenso.',
+      'Consejo: los gansos no aceptan sobornos. Salvo pan.',
+    ],
+    press: 'ENTER',
+  },
+
+  // ---------------------------------------------------------------- duelo de chicanas
+  duel: {
+    title: 'DUELO DE CHICANAS',
+    prompt: 'Elegí tu réplica:',
+    learned: '(ya la sabés)',
+    rivalHurt: ['¡Grrr!', '...Touché.', 'Bueno, bueno. Empezamos.', 'Eso dolió.', 'Anotada. Me la voy a vengar.'],
+    rivalLaugh: ['¡JAJA! ¿Esa es tu réplica?', 'Me la dejaste servida.', 'Esa no te la festeja ni tu vieja.', 'Dale, seguí practicando.'],
+    tinchoHurt: '...',
+    tinchoLaugh: '...',
+    gansoWin: ['¡HONK! Réplica aprobada por el comité.', 'Tocado. Anotá esa en tu libretita.', 'Eso dolió más que una lumbar.'],
+    gansoLose: ['...Y así no se contesta una chicana.', 'Don Ganso anota: "respuesta flojita".', '¡HONK! Hasta yo tengo mejores réplicas. Y soy un ganso.'],
+    win: (rival: string) => `Arrancás con el primer paso de tu receta. ${rival} arranca calentito.`,
+    lose: (rival: string) => `${rival} arranca con un pasito de su receta de ventaja.`,
+    learnedNow: '¡Réplica aprendida! La próxima vez aparece marcada.',
+    help: '↑↓ elegir · ENTER responder',
+  },
+
+  // ---------------------------------------------------------------- chicanas (rival → vos)
+  // Cada una: lo que dice el rival, la réplica buena y respuestas malas (y graciosas).
+  chicanas: {
+    elRosco: [
+      { id: 'ro1', line: 'Te voy a ganar tan despacio que vas a salir de acá jubilado.', good: 'Con esa espalda, el que se jubila en el segundo game sos vos.', bad: ['¿Jubilado? ¡Qué lindo, siempre quise viajar!', 'Eh... ¿vos también?'] },
+      { id: 'ro2', line: 'Mi dejadita es tan corta que la pelota pide permiso para pasar la red.', good: 'Igual que vos para agacharte a buscarla: con turno en el quiropráctico.', bad: ['Qué pelota educada.', 'Yo tampoco paso la red. Ni la mía.'] },
+      { id: 'ro3', line: 'Soy el Rey de Copas: te voy a guardar en la vitrina.', good: 'Tu vitrina tiene más polvo que la cancha de Spring Ridge.', bad: ['Tengo una vitrina de IKEA, si querés te la presto.', '¿Me limpiás primero?'] },
+      { id: 'ro4', line: '¡Eso fue gol! ¡Y eso! ¡Y eso también!', good: 'Festejá tranquilo, que para el tercer grito ya no te da el aire.', bad: ['¿Gol? Pensé que jugábamos al paddle.', 'Yo también grito cuando me duele algo.'] },
+      { id: 'ro5', line: 'Voy a correr cada pelota como si fuera la última.', good: 'Tranquilo, con tu aire va a ser la tercera.', bad: ['Qué intenso. ¿Querés agua?', 'Yo corro cada pelota como si fuera la primera: perdido.'] },
+      { id: 'ro6', line: 'Mi risa se escucha desde el Chattahoochee.', good: 'Sí, los gansos creen que es otro ganso con dolor de espalda.', bad: ['¡Jajaja! ...perdón, me contagiaste.', 'El río tiene mejor oído que yo.'] },
+      { id: 'ro7', line: 'Te voy a mover de lado a lado como a un péndulo.', good: '¿Vos moviendo a alguien? Si para darte vuelta necesitás tres puntos.', bad: ['Me encantan los péndulos. Son tan... pendulares.', 'Dale, pero despacito que me mareo.'] },
+      { id: 'ro8', line: 'Tengo más recursos que vos: dejadita, dejadita y dejadita.', good: 'Y yo tengo un plan: hacerte correr hasta que digas "¡Ay, la lumbar!".', bad: ['Yo tengo drive, drive y... bueno, drive.', '¿Me pasás la receta?'] },
+      { id: 'ro9', line: 'Mi quiropráctico me pidió que no gane tan fuerte.', good: 'Quedate tranquilo: hoy le vas a hacer caso.', bad: ['El mío me pidió que no juegue.', '¿Me pasás su número?'] },
+    ],
+    elSeba: [
+      { id: 'se1', line: '¡Te voy a volear hasta la visa!', good: 'Tranquilo, que con tus errores no forzados el trámite lo hacés vos solo.', bad: ['¿La de turista o la de trabajo?', '¡Uy, dejé el pasaporte en el auto!'] },
+      { id: 'se2', line: 'Subo a la red antes de que termines de sacar.', good: 'Ideal: te paso el globo por arriba y te despido con honores de Estado.', bad: ['¿Y si saco yo antes de que subas?', 'Yo subo a la red solo para cambiar de lado.'] },
+      { id: 'se3', line: 'Tengo inmunidad diplomática: mis errores no cuentan.', good: 'Entonces hoy vas a necesitar una embajada entera.', bad: ['¿Y los míos cuentan doble?', 'Qué suerte. Yo tengo seguro de auto nomás.'] },
+      { id: 'se4', line: '¡HEEEY!', good: 'Guardá el grito para cuando la mandes a la red, que va a ser pronto.', bad: ['¡HOOOO!', '¿Sí? ¿Me llamabas?'] },
+      { id: 'se5', line: 'La Bombonera no tiembla: late. Y vos vas a temblar.', good: 'Lo único que tiembla acá es tu volea cuando te apurás.', bad: ['Yo tiemblo con el aire acondicionado del club.', '¿Late? Llamá a un cardiólogo.'] },
+      { id: 'se6', line: 'Soy tan rápido que llego antes que la pelota.', good: 'Por eso le pegás antes de tiempo: "¡Uy, me apuré!" es tu segundo nombre.', bad: ['Yo llego antes que la pelota al vestuario.', 'Uh, ¿y la esperás?'] },
+      { id: 'se7', line: 'Este partido lo resolvemos por la vía diplomática.', good: 'Dale: yo gano y vos firmás el acta de rendición.', bad: ['¿Hay catering?', 'Prefiero la vía rápida. La del peaje.'] },
+      { id: 'se8', line: 'Esta mañana pesqué un bagre más grande que tu revés.', good: 'Y seguro que al bagre también lo tiraste a la red.', bad: ['¿Y lo devolviste al río? Muy ecológico.', 'Mi revés es chiquito pero cumplidor.'] },
+    ],
+    trueTincho: [
+      { id: 'ti1', line: '...', good: '¿Eso es estrategia o estás esperando que te lo diga Maravilla?', bad: ['......', '¿Me estás hablando a mí?'] },
+      { id: 'ti2', line: 'Bien.', good: '¿"Bien"? Con esos anteojos no ves si picó adentro o afuera.', bad: ['Bien, ¿y vos?', 'Muy bien. Excelente. Perfecto. ¿Seguimos?'] },
+      { id: 'ti3', line: 'El tenis es un deporte serio.', good: 'Por eso nunca te vimos sonreír: te lo tomaste demasiado a pecho.', bad: ['¿En serio?', 'El mío es un deporte de riesgo.'] },
+      { id: 'ti4', line: 'Te voy a pelotear hasta que te aburras.', good: 'No hace falta: con tu cara de póker me aburrí en el calentamiento.', bad: ['Traje un libro, por las dudas.', '¡Genial, me encanta pelotear!'] },
+      { id: 'ti5', line: 'Cuando voy perdiendo, soy más peligroso.', good: 'Entonces hoy vas a ser peligrosísimo.', bad: ['Yo cuando voy perdiendo, lloro.', '¿Peligroso tipo cuchillo o tipo mate frío?'] },
+      { id: 'ti6', line: 'Mi mate está más caliente que tu drive.', good: 'Y tu sonrisa, más fría que el agua del Chattahoochee.', bad: ['¿Me convidás uno?', 'Mi drive es de agua tibia, para no quemar.'] },
+      { id: 'ti7', line: 'El paralelo no se ve venir.', good: 'Con esos anteojos negros, vos tampoco ves venir nada.', bad: ['¿El paralelo de qué? ¿De la ruta?', 'Yo veo venir todo: la pelota, el paralelo, el lunes.'] },
+      { id: 'ti8', line: 'Arranco lento, pero después no paro.', good: 'Mientras arrancás, yo ya voy 3-0 y pidiendo agua.', bad: ['Yo arranco rápido y después me siento.', 'Como mi abuela con el auto.'] },
+      { id: 'ti9', line: 'Racing es un sentimiento. Vos sos un trámite.', good: 'Y vos sos un "Bien." con anteojos.', bad: ['¿Qué trámite? ¿El DNI?', 'Yo también soy un sentimiento: culpa.'] },
+    ],
+    volpi: [
+      { id: 'vo1', line: 'Betty me devuelve más pelotas que vos.', good: 'Betty por lo menos no se tienta cuando la pifia.', bad: ['Betty es una máquina, no vale.', 'Presentámela.'] },
+      { id: 'vo2', line: 'Mi saque es tan fuerte que el radar pidió licencia.', good: 'Tranquilo: con una cargada te lo convierto en saque de abuela.', bad: ['¿Licencia por maternidad?', 'Mi radar es mi suegra.'] },
+      { id: 'vo3', line: 'Te voy a tirar un globo que va a salir de la pantalla.', good: 'Dale, así mientras baja te da tiempo de parar de reírte.', bad: ['¿Qué pantalla? ¿Estamos en un videojuego?', 'Yo tiro globos de cumpleaños nomás.'] },
+      { id: 'vo4', line: '¡Jajaja! Perdón, me acordé de tu revés.', good: 'Reíte, que con cada carcajada tu primer saque pierde diez kilómetros.', bad: ['¡Jajaja! Yo también me acuerdo.', 'Mi revés es muy gracioso, sí.'] },
+      { id: 'vo5', line: 'Mi slice no pica: patina. Como tus excusas.', good: 'Por lo menos mis excusas no necesitan una lanzapelotas para funcionar.', bad: ['Mis excusas son de primera calidad.', '¿Patina? Pedile a Angelito que nivele la cancha.'] },
+      { id: 'vo6', line: 'Soy el más grande de River.', good: '¿El más grande? Si Betty te lleva de la mano a todos lados.', bad: ['¿El más grande de altura?', 'Bueno, felicitaciones.'] },
+      { id: 'vo7', line: 'Esto con Betty no me pasa.', good: 'Con Betty no te pasa porque Betty no te gana.', bad: ['¿Con quién? ¿Tu novia?', 'Esto a mí me pasa siempre.'] },
+      { id: 'vo8', line: 'En mis anteojos espejados te vas a ver perdiendo.', good: 'Genial, así también ves la cara que ponés cuando te hago una cargada.', bad: ['¡Uh, estoy despeinado!', 'Me veo bien, gracias.'] },
+    ],
+    elVikingo: [
+      { id: 'vi1', line: 'Tu revés es tan blando que Mabel lo cocina en tres minutos.', good: 'Y tu volea está más cruda que lo que nunca metés en Mabel.', bad: ['¿A cuántos grados?', 'Mi revés es sin TACC.'] },
+      { id: 'vi2', line: '¡Valhalla! Hoy te mando al más allá.', good: 'Al más allá no sé, pero a la red no vas ni con GPS.', bad: ['¿Hay que llevar algo?', 'Yo al más allá voy los domingos.'] },
+      { id: 'vi3', line: 'Te voy a tocar un solo de guitarra en la cara.', good: 'Si lo tocás como las voleas, va a salir desafinado.', bad: ['¿Sabés alguno de los Redondos?', 'Prefiero la flauta dulce.'] },
+      { id: 'vi4', line: 'Mis passings cruzados son como un drakkar: llegan y saquean.', good: 'Y tus voleas son como un drakkar en un charco: no saben dónde están.', bad: ['¿Un drakkar es un tipo de mate?', 'A mí me saquearon el auto una vez.'] },
+      { id: 'vi5', line: 'Mabel no aprueba tu estilo.', good: 'Mabel tampoco aprueba que la dejes sola por la guitarra.', bad: ['¿Quién es Mabel? ¿Tu suegra?', 'Mi estilo es libre, como el pollo de Mabel.'] },
+      { id: 'vi6', line: 'Del fondo no me saca nadie.', good: 'Ni la red, que para vos es territorio desconocido.', bad: ['Del fondo del mar tampoco.', 'Yo del fondo no salgo porque no encuentro la puerta.'] },
+      { id: 'vi7', line: 'Esto se fríe en 8 minutos.', good: 'Lo único que se fríe acá es tu cabeza cuando llegás a la red.', bad: ['¿Con aceite o sin aceite?', 'Yo me frío en 4, soy de piel clara.'] },
+      { id: 'vi8', line: 'Mi barba es tan larga que te va a barrer la cancha.', good: 'Con suerte te barre la red, que nunca la pisás.', bad: ['¿Usás acondicionador?', 'Me encantaría tener tu barba. De verdad.'] },
+    ],
+    angelito: [
+      { id: 'an1', line: '¡Te voy a pasar la minicargadora por encima!', good: 'Primero acordate dónde queda el centro de la cancha, maestro mayor de obras.', bad: ['¿Tiene cinturón de seguridad?', '¿Me llevás hasta el estacionamiento?'] },
+      { id: 'an2', line: 'Llego a todas las pelotas.', good: 'Llegás a todas, sí. Después te quedás mirándolas con un "?" en la cabeza.', bad: ['Yo llego a todas las fiestas.', 'Qué bueno, ¿me alcanzás esa?'] },
+      { id: 'an3', line: 'Esta cancha necesita una nivelación. Y vos también.', good: 'Nivelate vos, que los globos te pasan por arriba sin pedir permiso.', bad: ['¿Tenés nivel de burbuja?', 'Yo estoy nivelado, es el piso.'] },
+      { id: 'an4', line: 'Soy tan rápido que me dicen Motor de Hormiga.', good: 'Y como las hormigas, después de pegar no sabés volver al hormiguero.', bad: ['A mí me dicen para pedirme plata.', '¿Motor de hormiga es nafta o diésel?'] },
+      { id: 'an5', line: '¡Eso lo arreglo yo!', good: 'Como la red que arreglaste la semana pasada: ahora mide un metro y medio.', bad: ['¿Me arreglás la canilla?', 'Ok.'] },
+      { id: 'an6', line: 'Soy neutral: no tengo club, así que no tengo nada que perder.', good: 'Tampoco tenés nada que ganar, así que estamos bien.', bad: ['¿Neutral como Suiza?', 'Yo tampoco tengo club. Tengo gimnasio.'] },
+      { id: 'an7', line: 'Te voy a dejar la cancha llena de conos.', good: 'Y vos vas a quedar al lado de un cono, preguntándote dónde era el centro.', bad: ['Me encantan los conos. Son como sombreritos.', '¿De helado?'] },
+      { id: 'an8', line: 'Mido poco, pero pego mucho.', good: 'Medís poco, pegás mucho... y la mandás toda afuera.', bad: ['Yo mido mucho y pego poco. Somos complementarios.', '¿Cuánto medís? Por curiosidad.'] },
+    ],
+    // Las usa cualquiera: se aprenden con uno y sirven contra todos.
+    shared: [
+      { id: 'sh1', line: 'Hoy te voy a hacer correr más que un ganso con hambre.', good: 'Don Ganso ya me avisó que vos no llegás al segundo game.', bad: ['¿Los gansos corren? Pensé que nadaban.', 'Hoy almorcé, estoy bien.'] },
+      { id: 'sh2', line: 'Tu saque es tan lento que la pelota llega con barba.', good: 'Y aun así la devolvés a la red.', bad: ['¿Barba de pocos días o tupida?', 'La afeito en el camino.'] },
+      { id: 'sh3', line: 'Jugás como si la raqueta fuera prestada.', good: 'Es prestada. Y aun así te voy a ganar.', bad: ['No, es mía, la pagué en cuotas.', '¿Me la querés comprar?'] },
+      { id: 'sh4', line: 'En el grupo de WhatsApp ya saben que perdés.', good: 'Sí, lo leyeron en el mensaje que mandaste vos y nadie contestó.', bad: ['¿Qué grupo? ¿Me agregás?', 'Tengo el celular sin batería.'] },
+      { id: 'sh5', line: 'Después del partido hay asado. Vos traé los pañuelos.', good: 'Genial, así por lo menos esta vez el fuego lo prendés vos.', bad: ['¿Hay chorizo?', 'Yo llevo la ensalada.'] },
+      { id: 'sh6', line: 'Don Ganso está de mi lado.', good: 'Don Ganso no está del lado de nadie: se durmió en el primer game.', bad: ['¿El ganso? Es un pájaro, no un árbitro.', '¿De qué lado está la red?'] },
+    ],
+  },
+
+  // ---------------------------------------------------------------- resultado y game over
+  result: {
+    won: '¡GANASTE!',
+    lost: 'PERDISTE',
+    towerNext: 'ENTER: seguir subiendo',
+    towerLost: 'ENTER: seguir',
+    absurd: {
+      elRosco: 'Veces que se agarró la camiseta',
+      elSeba: '"¡HEEEY!" gritados',
+      trueTincho: 'Mates tomados',
+      volpi: 'Carcajadas',
+      elVikingo: 'Riffs de guitarra',
+      angelito: 'Ajustes a la red',
+      donGanso: 'Graznidos',
+    } as Record<string, string>,
+  },
+  gameOver: {
+    title: 'GAME OVER',
+    cont: '¿CONTINUAR?',
+    help: 'ENTER: continuar · ESC: rendirse',
+    // Don Ganso cuenta y se impacienta (clave = número en pantalla).
+    count: {
+      10: 'Tomate tu tiempo.',
+      8: 'Bueno, tampoco tanto.',
+      6: 'Los gansos tenemos agenda, eh.',
+      4: '¿Hola? ¿Hay alguien?',
+      2: 'Me voy a dormir. Literal.',
+      1: 'Zzz...',
+      0: 'Listo. Te espero en el menú. ¡HONK!',
+    } as Record<number, string>,
+    again: ['¡Así me gusta! Otra vez al escalón.', 'Volvemos. Don Ganso ya se sabe el camino.'],
+  },
+
+  // ---------------------------------------------------------------- Boss
+  boss: {
+    title: 'EL GRAN CHATTAHOOCHEE',
+    arrive: 'Algo viene por el río...',
+    announce: 'Para ser el verdadero Chattahoochee, tenés que ganarle a todos. En el mismo partido. Sin llorar.',
+    rules: 'Un game contra cada uno. Ganás el game: rival ELIMINADO. Lo perdés: perdés una lata y ese rival vuelve a la fila.',
+    intro: {
+      elRosco: '¡Llegó el Rey de Copas! Esperen que me bajo... ¡ay, la lumbar!',
+      elSeba: '¡HEEEY! Vengo en misión diplomática.',
+      trueTincho: '...Bien.',
+      volpi: '¡Jajaja! Betty, amor, esperame en la orilla.',
+      elVikingo: '¡VALHALLA! Mabel, precalentá a 200.',
+      angelito: 'Este muelle necesita una nivelación. ¡Eso lo arreglo yo!',
+    } as Record<string, string>,
+    cans: 'LATAS',
+    eliminated: 'ELIMINADO',
+    next: (name: string) => `Próximo: ${name}`,
+    backInLine: (name: string) => `${name} vuelve a la fila.`,
+    lostCan: ['Una lata menos. Las pelotas lloran.', 'Perdiste una lata. Don Ganso la recicla.', 'Menos una lata. Sin llorar, dijimos.'],
+    wonGame: ['¡ELIMINADO! A la orilla.', 'Uno menos. El río lo espera.', '¡Afuera! Y no lo digo por la pelota.'],
+    lastCan: '¡Última lata! Sin presión. Bueno, con toda la presión.',
+    betty: ['¡BIP BIP!', 'PUNTO. REGISTRADO.', '¡ÁNIMO, HUMANO!'],
+    mabel: ['¡DING!', '¡DING DING!', 'Crocante.'],
+    victory: ['Los cinco te levantan en andas...', '...y ¡AL RÍO!', '¡SPLASH! Sos el verdadero Chattahoochee.'],
+  },
+
+  // ---------------------------------------------------------------- finales (3 viñetas cada uno)
+  endings: {
+    elRosco: [
+      { caption: 'El Rosco levanta la copa, se agarra la camiseta y grita el gol más largo de la historia.', bubble: '¡GOOOOOOOL!' },
+      { caption: 'A mitad del grito, algo hace "crac".', bubble: '¡AY, LA LUMBAR!' },
+      { caption: 'Quiropráctico, turno de las 9. Boca abajo, abrazado a la copa. El Rey de Copas, finalmente con copa.', bubble: 'No me la saquen.' },
+    ],
+    elSeba: [
+      { caption: 'La copa es declarada "valija diplomática". Nadie la puede revisar. Ni tocar. Ni mirar mucho.', bubble: 'Convención de Viena, muchachos.' },
+      { caption: 'La Bombonera no tiembla: late.', bubble: '¡HEEEEEEY!' },
+      { caption: 'Días después, en el Chattahoochee: la copa hace de balde de carnada. Los bagres, emocionados.', bubble: 'Pican más con copa.' },
+    ],
+    trueTincho: [
+      { caption: 'True Tincho gana. Se sienta. Toma un mate. No sonríe.', bubble: '...' },
+      { caption: '¿Qué haría Maravilla en este momento?', bubble: 'Exactamente esto.' },
+      { caption: 'Zoom extremo. Fuentes confiables confirman: sonrió. Un píxel.', bubble: '' },
+    ],
+    volpi: [
+      { caption: 'Betty festeja disparando 400 pelotas. El club declara emergencia amarilla.', bubble: '¡FIESTA. FIESTA. FIESTA.!' },
+      { caption: 'Volpi se ríe tanto que no puede levantar la copa.', bubble: '¡Jajajaja! Esperá... ¡jajaja!' },
+      { caption: 'Al final, la copa la sostiene Betty. Como siempre, hace todo ella.', bubble: 'COPA. ASEGURADA.' },
+    ],
+    elVikingo: [
+      { caption: 'El Vikingo mira la copa, la da vuelta, la huele.', bubble: '¿Se puede freír una copa?' },
+      { caption: 'Mabel no duda un segundo.', bubble: '¡DING! Todo se puede freír.' },
+      { caption: 'Solo de guitarra sobre un drakkar navegando el Chattahoochee. Los gansos hacen los coros.', bubble: '¡VALHALLAAA!' },
+    ],
+    angelito: [
+      { caption: 'Angelito usa la copa como maceta. Plantó un limonero. Crece torcido, pero crece.', bubble: 'Le falta nivelación.' },
+      { caption: 'Con la minicargadora construye un estadio en el jardín. Sin permisos. Sin planos. Con mucho amor.', bubble: '¡Eso lo arreglo yo!' },
+      { caption: 'La foto oficial del campeón. Angelito salió fuera de cuadro: se olvidó de volver al centro.', bubble: '¿Dónde estaba el centro?' },
+    ],
+    donGanso: [
+      { caption: 'Don Ganso levanta la copa con el pico. Pesa más que él. No le importa.', bubble: '¡HONK!' },
+      { caption: 'Usa la copa de nido. Es el nido más caro de todo el Chattahoochee.', bubble: 'Mía. Lo canto yo.' },
+      { caption: 'Al día siguiente vuelve a su silla. Alguien tiene que cantar los puntos.', bubble: '15-0. ¿Qué miran?' },
+    ],
+  } as Record<string, { caption: string; bubble: string }[]>,
+  unlock: {
+    outfit: (name: string, outfit: string) => `¡TRAJE DESBLOQUEADO! ${name}: ${outfit}`,
+    ganso: '¡DON GANSO JUGABLE DESBLOQUEADO! Ganaste la torre con los seis. Ahora el umpire baja a la cancha.',
+    towers: (n: number) => `Torres ganadas: ${n} de 6`,
+    end: 'ENTER: volver al menú',
   },
 
   // ---------------------------------------------------------------- pausa y fin

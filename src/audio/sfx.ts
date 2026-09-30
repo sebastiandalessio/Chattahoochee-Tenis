@@ -186,6 +186,8 @@ export const sfx = {
       });
     } else if (who === 'volpi' || who === 'elRosco') {
       this.laugh();
+    } else if (who === 'donGanso') {
+      this.call();
     } else if (who === 'trueTincho') {
       burst(0.4, 0.2, 700, 3); // sorbo de mate
     } else {

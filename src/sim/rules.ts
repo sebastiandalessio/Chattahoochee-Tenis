@@ -1,7 +1,7 @@
 // La "mística" de cada personaje: receta de 3 pasos, especial, pasiva y debilidad.
 // Datos puros (los textos que se muestran están en src/texts/es.ts).
 
-export type CharId = 'elRosco' | 'elSeba' | 'trueTincho' | 'volpi' | 'elVikingo' | 'angelito';
+export type CharId = 'elRosco' | 'elSeba' | 'trueTincho' | 'volpi' | 'elVikingo' | 'angelito' | 'donGanso';
 
 export type StepId =
   | 'winDrop' // ganar un punto con dejadita o golpe corto
@@ -20,7 +20,7 @@ export type StepId =
   | 'impossible3' // devolver 3 pelotas "imposibles" (estirándose o de palomita)
   | 'center3'; // volver al centro a tiempo 3 veces
 
-export type SpecialId = 'reyDeCopas' | 'dinein' | 'paralelo' | 'betty' | 'frita' | 'minicargadora';
+export type SpecialId = 'reyDeCopas' | 'dinein' | 'paralelo' | 'betty' | 'frita' | 'minicargadora' | 'vuelo';
 
 /** Los especiales "de golpe" modifican el próximo golpe; los otros duran el resto del punto. */
 export const SHOT_SPECIALS: SpecialId[] = ['reyDeCopas', 'paralelo', 'betty', 'frita'];
@@ -37,6 +37,7 @@ export const RULES: Record<CharId, CharRules> = {
   volpi: { recipe: ['aceOrServeWinner', 'winLob', 'tauntAfterWin'], special: 'betty' },
   elVikingo: { recipe: ['baseline6', 'crossPass', 'tauntAny'], special: 'frita' },
   angelito: { recipe: ['impossible3', 'center3', 'tauntAny'], special: 'minicargadora' },
+  donGanso: { recipe: ['tauntAfterWin', 'winVolley', 'aceOrServeWinner'], special: 'vuelo' },
 };
 
 /** Cuántas veces hay que hacer los pasos que se cuentan. */

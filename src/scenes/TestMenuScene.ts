@@ -4,6 +4,7 @@
 import Phaser from 'phaser';
 import { CHARACTER_ORDER } from '../game/characters';
 import { DEFAULT_SETUP, type CharacterPick, type MatchSetup, type Mode, type VenuePick } from '../game/setup';
+import { save, updateSave } from '../game/save';
 import { keyboard } from '../input/keyboard';
 import { T } from '../texts/es';
 import { pxText } from '../ui/pixelFont';
@@ -12,9 +13,9 @@ import { UI, drawBox, fullscreenButton } from '../ui/widgets';
 const MODES: Mode[] = ['cpu', '2p', 'demo'];
 const GAMES = [2, 4, 6] as const;
 const VENUE_PICKS: VenuePick[] = ['sorteo', 'breckenridge', 'springRidge', 'stRegis', 'chattahoochee'];
-const PICKS: CharacterPick[] = [...CHARACTER_ORDER, 'azar'];
+const picks = (): CharacterPick[] => [...CHARACTER_ORDER, ...(save().ganso ? (['donGanso'] as CharacterPick[]) : []), 'azar'];
 
-const ROW_Y0 = 120;
+const ROW_Y0 = 116;
 const ROW_DY = 19;
 const OPTION_ROWS = 6;
 
@@ -25,13 +26,15 @@ export class TestMenuScene extends Phaser.Scene {
   private values: Phaser.GameObjects.BitmapText[] = [];
   private cursor!: Phaser.GameObjects.BitmapText;
   private play!: Phaser.GameObjects.BitmapText;
+  private towerBtn!: Phaser.GameObjects.BitmapText;
 
   constructor() {
     super('testMenu');
   }
 
   init(data: Partial<MatchSetup>): void {
-    this.setup = { ...DEFAULT_SETUP, ...data, speed: 1, seed: undefined };
+    const o = save().options;
+    this.setup = { ...DEFAULT_SETUP, games: o.games, difficulty: o.difficulty, ...data, speed: 1, seed: undefined, tower: undefined, boss: undefined, outfits: undefined };
     this.sel = OPTION_ROWS;
     // Las escenas se reutilizan: hay que vaciar lo que quedó de la visita anterior.
     this.rows = [];
@@ -58,7 +61,9 @@ export class TestMenuScene extends Phaser.Scene {
       this.rows.push(pxText(this, 176, y, '', { outline: true }));
       this.values.push(pxText(this, 300, y, '', { outline: true, color: UI.gold }));
     }
-    this.play = pxText(this, 320, ROW_Y0 + OPTION_ROWS * ROW_DY + 8, T.testMenu.play, { outline: true, scale: 2 }).setOrigin(0.5, 0);
+    this.play = pxText(this, 320, ROW_Y0 + OPTION_ROWS * ROW_DY + 4, T.testMenu.play, { outline: true, scale: 2 }).setOrigin(0.5, 0);
+    this.towerBtn = pxText(this, 320, ROW_Y0 + OPTION_ROWS * ROW_DY + 26, T.testMenu.tower, { outline: true }).setOrigin(0.5, 0);
+    pxText(this, 320, ROW_Y0 + OPTION_ROWS * ROW_DY + 38, T.testMenu.towerHint, { color: UI.dim }).setOrigin(0.5, 0);
     this.cursor = pxText(this, 162, 0, '▶', { outline: true, color: UI.gold });
     pxText(this, 320, 290, T.testMenu.help, { outline: true, color: UI.dim }).setOrigin(0.5, 0);
     fullscreenButton(this);
@@ -92,8 +97,10 @@ export class TestMenuScene extends Phaser.Scene {
     labels.forEach((l, i) => this.rows[i].setText(l).setTint(i === this.sel ? UI.gold : UI.white));
     values.forEach((v, i) => this.values[i].setText(v));
     this.play.setTint(this.sel === OPTION_ROWS ? UI.gold : UI.white);
+    this.towerBtn.setTint(this.sel === OPTION_ROWS + 1 ? UI.gold : UI.white);
     if (this.sel < OPTION_ROWS) this.cursor.setPosition(162, ROW_Y0 + this.sel * ROW_DY);
-    else this.cursor.setPosition(242, ROW_Y0 + OPTION_ROWS * ROW_DY + 12);
+    else if (this.sel === OPTION_ROWS) this.cursor.setPosition(242, ROW_Y0 + OPTION_ROWS * ROW_DY + 8);
+    else this.cursor.setPosition(222, ROW_Y0 + OPTION_ROWS * ROW_DY + 26);
   }
 
   private change(dir: number): void {
@@ -103,12 +110,12 @@ export class TestMenuScene extends Phaser.Scene {
     if (this.sel === 1) s.games = cycle(GAMES, s.games);
     if (this.sel === 2) s.difficulty = cycle([0, 1, 2] as const, s.difficulty);
     if (this.sel === 3) s.venue = cycle(VENUE_PICKS, s.venue);
-    if (this.sel === 4) s.chars = [cycle(PICKS, s.chars[0]), s.chars[1]];
-    if (this.sel === 5) s.chars = [s.chars[0], cycle(PICKS, s.chars[1])];
+    if (this.sel === 4) s.chars = [cycle(picks(), s.chars[0]), s.chars[1]];
+    if (this.sel === 5) s.chars = [s.chars[0], cycle(picks(), s.chars[1])];
   }
 
   update(): void {
-    const n = OPTION_ROWS + 1;
+    const n = OPTION_ROWS + 2;
     if (keyboard.anyPressed(['ArrowUp', 'KeyW'])) this.sel = (this.sel + n - 1) % n;
     if (keyboard.anyPressed(['ArrowDown', 'KeyS'])) this.sel = (this.sel + 1) % n;
     if (keyboard.anyPressed(['ArrowLeft', 'KeyA'])) this.change(-1);
@@ -117,6 +124,13 @@ export class TestMenuScene extends Phaser.Scene {
       if (this.sel === OPTION_ROWS) {
         keyboard.endFrame();
         this.scene.start('match', { ...this.setup });
+        return;
+      }
+      if (this.sel === OPTION_ROWS + 1) {
+        // La torre usa la duración y la dificultad elegidas acá (quedan guardadas).
+        updateSave((d) => ({ ...d, options: { ...d.options, games: this.setup.games, difficulty: this.setup.difficulty } }));
+        keyboard.endFrame();
+        this.scene.start('select');
         return;
       }
       this.sel = OPTION_ROWS;

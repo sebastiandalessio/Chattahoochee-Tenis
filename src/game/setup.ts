@@ -3,6 +3,7 @@
 import { BASIC_AI, type AiProfile } from '../sim/ai';
 import { VENUE_ORDER, type VenueId } from '../sim/venues';
 import { CHARACTER_ORDER, type CharacterId } from './characters';
+import type { BossCtx, DuelResult, TowerCtx } from './flow';
 
 export type Mode = 'cpu' | '2p' | 'demo';
 export type Difficulty = 0 | 1 | 2;
@@ -20,6 +21,12 @@ export interface MatchSetup {
   /** Velocidad de simulación (solo para mirar CPU contra CPU o pruebas automáticas). */
   speed?: number;
   seed?: number;
+  /** Trajes (0 = el principal). Si no se dice, el de arriba usa el alternativo en el espejo. */
+  outfits?: [number, number];
+  /** Partido de la torre (con el resultado del duelo de chicanas). */
+  tower?: { ctx: TowerCtx; duel: DuelResult };
+  /** Un game del relevo del Boss. */
+  boss?: BossCtx;
 }
 
 export const DEFAULT_SETUP: MatchSetup = {

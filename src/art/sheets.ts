@@ -12,6 +12,7 @@ import { trueTinchoArt } from './characters/trueTincho';
 import { volpiArt } from './characters/volpi';
 import { elVikingoArt } from './characters/elVikingo';
 import { angelitoArt } from './characters/angelito';
+import { donGansoArt } from './characters/donGanso';
 
 export const CHARACTER_ARTS: Record<string, CharacterArt> = {
   elRosco: elRoscoArt,
@@ -20,6 +21,7 @@ export const CHARACTER_ARTS: Record<string, CharacterArt> = {
   volpi: volpiArt,
   elVikingo: elVikingoArt,
   angelito: angelitoArt,
+  donGanso: donGansoArt,
 };
 
 export const MAX_FRAMES = 4;

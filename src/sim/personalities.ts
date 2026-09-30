@@ -34,7 +34,7 @@ const BASE: Personality = {
 };
 
 const PERSONALITIES: Record<CharId, Partial<Personality>> = {
-  elRosco: { dropChance: 0.3, netRush: 0.05, sliceChance: 0.25, chargeChance: 0.1, givesUp: true, tauntChance: 0.4, errorMul: 0.75 },
+  elRosco: { dropChance: 0.3, netRush: 0.05, sliceChance: 0.25, chargeChance: 0.1, givesUp: true, tauntChance: 0.4, errorMul: 0.62 },
   elSeba: { netRush: 0.75, chargeChance: 0.25, aimSmart: 0.6, tauntChance: 0.35, errorMul: 1.0, reaction: 0.22 },
   trueTincho: {
     netRush: 0.05,
@@ -42,13 +42,15 @@ const PERSONALITIES: Record<CharId, Partial<Personality>> = {
     aimSmart: 0.35,
     chargeChance: 0.05,
     timingJitter: 0.3,
-    errorMul: 1.1,
+    errorMul: 1.28,
     lineWhenBehind: true,
     tauntChance: 0.15,
   },
   volpi: {
-    serveFirst: 0.88,
-    serveSecond: 0.55,
+    // Saca bien porque su stat de Saque es el más alto, no porque se juegue todo (antes hacía
+    // demasiadas dobles faltas).
+    serveFirst: 0.78,
+    serveSecond: 0.45,
     sliceChance: 0.5,
     lobChance: 0.75,
     lobBase: 0.12,
@@ -58,6 +60,7 @@ const PERSONALITIES: Record<CharId, Partial<Personality>> = {
   },
   elVikingo: { netRush: 0, chargeChance: 0.35, crossBias: true, sliceChance: 0.05, tauntChance: 0.3, errorMul: 0.95 },
   angelito: { reaction: 0.2, misjudge: 0.25, errorMul: 0.92, stayAfterHit: true, tauntChance: 0.3, dropChance: 0.08 },
+  donGanso: { netRush: 0.45, tauntChance: 0.45, errorMul: 1.0, chargeChance: 0.2 },
 };
 
 /** Personalidad de un personaje sobre un perfil de dificultad (reacción, puntería, etc.). */

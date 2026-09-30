@@ -35,10 +35,14 @@ try {
       console.log(`playtest/sprites/sede_${id}.png (${Date.now() - t0} ms)`);
     }
   }
-  if (process.argv.includes('--objects')) {
-    // Lámina de objetos (Betty, Mabel, minicargadora...) ampliada x6, para revisar.
-    const o = await server.ssrLoadModule('/src/art/objects.ts');
-    const imgs = [o.drawBetty(), o.drawMabel('normal'), o.drawMabel('ding'), o.drawLoader(), o.drawCone(), o.drawPothole(), o.drawSign(), o.drawFriedBall()];
+  if (process.argv.includes('--objects') || process.argv.includes('--cutscene')) {
+    // Lámina de objetos (Betty, Mabel, minicargadora...) ampliada, para revisar.
+    // Con --cutscene: la utilería de la torre, el Boss y los finales.
+    const cut = process.argv.includes('--cutscene');
+    const o = await server.ssrLoadModule(cut ? '/src/art/cutsceneArt.ts' : '/src/art/objects.ts');
+    const imgs = cut
+      ? [o.drawTrophy(), o.drawCan(true), o.drawCan(false), o.drawMate(), o.drawTrophyPlant(), o.drawChiroTable(), o.drawDrakkar(), o.drawStadium(), o.drawLongKayak()]
+      : [o.drawBetty(), o.drawMabel('normal'), o.drawMabel('ding'), o.drawLoader(), o.drawCone(), o.drawPothole(), o.drawSign(), o.drawFriedBall()];
     const W = imgs.reduce((a, i) => a + i.w + 4, 0);
     const H = Math.max(...imgs.map((i) => i.h));
     const data = new Uint8ClampedArray(W * H * 4);
@@ -55,8 +59,9 @@ try {
     }
     const pdir = path.join(root, 'playtest', 'sprites');
     mkdirSync(pdir, { recursive: true });
-    writeFileSync(path.join(pdir, 'objetos.png'), encodePNG(W, H, data, 6));
-    console.log('playtest/sprites/objetos.png');
+    const name = cut ? 'utileria.png' : 'objetos.png';
+    writeFileSync(path.join(pdir, name), encodePNG(W, H, data, cut ? 4 : 6));
+    console.log('playtest/sprites/' + name);
   }
   if (process.argv.includes('--board')) {
     // Lámina de revisión (todos los personajes juntos), solo para mirar: va a playtest/.
