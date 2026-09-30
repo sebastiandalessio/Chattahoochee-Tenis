@@ -277,9 +277,10 @@ export class MatchScene extends Phaser.Scene {
       else if (keyboard.wasPressed('Escape')) this.scene.start('testMenu', this.setup);
       return;
     }
-    const pauseKeys = this.setup.mode === '2p' ? ['Escape', 'Enter'] : ['Escape', 'Enter'];
+    // Con el partido terminado no hay pausa: Enter y Esc son para la pantalla final.
+    if (this.match.phase === 'matchOver') return;
     if (!this.paused) {
-      if (keyboard.anyPressed(pauseKeys)) this.openPause();
+      if (keyboard.anyPressed(['Escape', 'Enter'])) this.openPause();
       return;
     }
     if (keyboard.anyPressed(['ArrowUp', 'KeyW'])) this.pauseSel = (this.pauseSel + 2) % 3;
@@ -528,6 +529,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showEnd(winner: Side): void {
+    if (this.paused) this.closePause();
     const m = this.match;
     const g = this.add.graphics().setDepth(9950);
     g.fillStyle(0x000000, 0.6).fillRect(0, 0, 640, 360);

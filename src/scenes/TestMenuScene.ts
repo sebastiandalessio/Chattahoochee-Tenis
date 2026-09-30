@@ -25,6 +25,9 @@ export class TestMenuScene extends Phaser.Scene {
   init(data: Partial<MatchSetup>): void {
     this.setup = { ...DEFAULT_SETUP, ...data, speed: 1, seed: undefined };
     this.sel = 4;
+    // Las escenas se reutilizan: hay que vaciar lo que quedó de la visita anterior.
+    this.rows = [];
+    this.values = [];
   }
 
   create(): void {

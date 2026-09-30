@@ -72,6 +72,83 @@ try {
     console.log('  corre:', s ? `sí (fase ${s.phase}, t=${s.time.toFixed(1)}s)` : 'NO');
   }
 
+  // ------------------------------------------------------------ pantalla final: Enter y Esc
+  if (which === 'all' || which === 'end') {
+    console.log('Pantalla final (Enter = otro partido, Esc = menú)');
+    const waitEnd = async () => {
+      const t0 = Date.now();
+      let s = await state();
+      while (s && s.phase !== 'matchOver' && Date.now() - t0 < 180000) {
+        await sleep(500);
+        s = await state();
+      }
+      await sleep(2500);
+    };
+    await page.goto(`${base}?demo=1&games=2&speed=8&seed=4`);
+    await waitEnd();
+    await shot('08-final-antes-enter');
+    await page.keyboard.press('Enter');
+    await sleep(1200);
+    let s = await state();
+    const scenes = () =>
+      page.evaluate(() => window.__cht.scene.game.scene.getScenes(true).map((x) => x.sys.settings.key));
+    console.log('  después de Enter:', s?.phase, 't=', s?.time.toFixed(1), 'escenas', JSON.stringify(await scenes()));
+    await waitEnd();
+    await page.keyboard.press('Escape');
+    await sleep(1200);
+    console.log('  después de Esc: escenas', JSON.stringify(await scenes()));
+    await shot('09-final-despues-esc');
+  }
+
+  // ------------------------------------------------------------ pantalla final jugando vos (desde el menú)
+  if (which === 'all' || which === 'end1p') {
+    console.log('Pantalla final en 1 jugador, entrando desde el menú');
+    const scenes = () =>
+      page.evaluate(() => window.__cht?.scene.game.scene.getScenes(true).map((x) => x.sys.settings.key));
+    await page.goto(base);
+    await sleep(800);
+    for (let round = 0; round < 2; round++) {
+      // En el menú: ir a "Duración", elegir 2 games y arrancar.
+      await page.keyboard.press('Enter');
+      await sleep(800);
+      await page.evaluate(() => {
+        const sc = window.__cht.scene;
+        sc.setup.speed = 8;
+        sc.match.score.rules.gamesPerSet = 1;
+      });
+      const t0 = Date.now();
+      let s = await state();
+      let last = 0;
+      while (s && s.phase !== 'matchOver' && Date.now() - t0 < 120000) {
+        if (s.server === 0 && (s.phase === 'preServe' || s.phase === 'toss') && Date.now() - last > 120) {
+          await page.keyboard.press('z');
+          last = Date.now();
+        }
+        await sleep(40);
+        s = await state();
+      }
+      // Apretar Enter/Esc apenas termina (antes de que aparezca el cartel) y después.
+      await page.keyboard.press(round === 0 ? 'Enter' : 'Escape');
+      await sleep(2500);
+      await shot(`10-final-1p-${round}`);
+      console.log(`  ronda ${round}: escenas`, JSON.stringify(await scenes()), 'fase', (await state())?.phase);
+      await page.keyboard.press(round === 0 ? 'Enter' : 'Escape');
+      await sleep(1500);
+      console.log(`  ronda ${round} después de ${round === 0 ? 'Enter' : 'Esc'}:`, JSON.stringify(await scenes()), (await state())?.phase);
+      if (round === 0) {
+        // Volver al menú con la pausa para probar la segunda visita.
+        await page.keyboard.press('Escape');
+        await sleep(300);
+        await page.keyboard.press('ArrowUp');
+        await sleep(100);
+        await page.keyboard.press('Enter');
+        await sleep(1000);
+        console.log('  pausa → menú:', JSON.stringify(await scenes()));
+        await shot('11-menu-segunda-visita');
+      }
+    }
+  }
+
   // ------------------------------------------------------------ captura para el README
   if (which === 'captura') {
     await page.goto(`${base}?demo=1&games=4&seed=5`);
