@@ -1,0 +1,34 @@
+# Dependencias y compilados
+node_modules/
+dist/
+.dist-single/
+*.tsbuildinfo
+
+# Capturas de pruebas automáticas (se regeneran)
+playtest/
+
+# PRIVACIDAD: nunca subir fotos reales
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG
+*.heic
+*.HEIC
+referencias/
+**/referencias/
+Angelito/
+El Rosco/
+El Seba/
+True Tincho/
+Vikingo/
+Volpi/
+
+# Página local de comparación con las fotos (solo uso local)
+sprites.html
+src/dev/
+
+# Varios
+.claude/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,5 @@
+Carpeta de reemplazos de sprites.
+
+Si ponés acá un PNG con el mismo nombre que uno de los que genera "npm run sprites"
+(en public/sprites/), el juego usa el tuyo en vez del generado.
+Sirve para retocar a mano con Aseprite o Piskel sin tocar el código.
