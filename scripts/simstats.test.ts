@@ -1,4 +1,4 @@
-﻿// Herramienta de ajuste (no es un test de verdad): corre muchos partidos CPU vs CPU e imprime estadísticas.
+// Herramienta de ajuste (no es un test de verdad): corre muchos partidos CPU vs CPU e imprime estadísticas.
 // Uso: npx vitest run scripts/simstats.test.ts --config vite.config.ts --dir scripts
 import { it } from 'vitest';
 import { createRng } from '../src/logic/rng';

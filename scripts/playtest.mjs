@@ -149,6 +149,23 @@ try {
     }
   }
 
+  // ------------------------------------------------------------ página local de personajes
+  if (which === 'sprites') {
+    console.log('Página sprites.html');
+    await page.goto(`${base}sprites.html`);
+    await sleep(2500);
+    const photos = await page.evaluate(() =>
+      [...document.querySelectorAll('.photos img')].map((i) => i.naturalWidth > 0),
+    );
+    console.log(`  fotos cargadas: ${photos.filter(Boolean).length}/${photos.length}`);
+    for (const id of ['elRosco', 'elSeba', 'trueTincho', 'volpi', 'elVikingo', 'angelito']) {
+      const section = page.locator(`#${id}`);
+      await section.scrollIntoViewIfNeeded();
+      await section.screenshot({ path: path.join(outDir, `sprites-${id}.png`) });
+      console.log('  captura:', `playtest/sprites-${id}.png`);
+    }
+  }
+
   // ------------------------------------------------------------ captura para el README
   if (which === 'captura') {
     await page.goto(`${base}?demo=1&games=4&seed=5`);

@@ -19,4 +19,18 @@ Cuando el documento original dejaba algo abierto, elegimos la opción más diver
 - **Sprites en el navegador:** las texturas se generan en tiempo de ejecución a partir del código (así el archivo único no depende de PNG externos). `npm run sprites` (hito 2) exporta los PNG a `public/sprites/` y los que pongas en `public/sprites/override/` reemplazan a los generados.
 - **Sonido mínimo ya en el hito 1:** golpe, pique, red y bocinazo del umpire, para poder evaluar la sensación de juego. El chiptune completo llega en el hito 6.
 - **Menú de prueba provisorio:** permite elegir modo (vs CPU, 2 jugadores, CPU contra CPU), duración, dificultad y superficie. Se reemplaza por el menú de verdad en el hito 6.
-- **Atajos para pruebas:** `?demo=1&speed=3` arranca CPU contra CPU acelerado; `?play=1` arranca directo contra la CPU; `?timer=1` usa un reloj alternativo para navegadores sin foco.
+- **Atajos de prueba:** `?demo=1&speed=3` arranca CPU contra CPU acelerado; `?play=1` arranca directo contra la CPU; `?timer=1` usa un reloj alternativo para navegadores sin foco.
+
+## Hito 2 – Personajes
+
+- **Cuerpo con esqueleto + cabezas en grilla:** las cabezas (lo que más se reconoce) están dibujadas píxel a píxel como grillas de caracteres por personaje. El cuerpo es una plantilla compartida: un esqueleto que se posa con ángulos y se dibuja con contorno, con la contextura de cada uno (Rosco ancho y con panza, Seba alto y flaco, Angelito ~8 px más bajo). Así las 10 animaciones sirven para los seis y cada traje nuevo sale gratis.
+- **Cuadros de 48×64:** un poco más grandes que 32×48 para que entren la raqueta arriba de la cabeza en el saque y la palomita acostada. El cuerpo en sí mide unos 32×44 (Angelito unos 28×38).
+- **Cabezas grandes a propósito:** proporción tipo "chibi" de 16 bits, para que las caras se reconozcan en la cancha.
+- **Vista de frente = espejo de la de espaldas**, con la cara en vez de la nuca y las capas invertidas (lo que de espaldas queda tapado por el torso, de frente se ve adelante).
+- **Retratos procedurales:** los retratos de 96×96 se pintan con figuras (óvalos, polígonos, sombreado con luz de arriba a la izquierda) en vez de píxel a píxel, así se pueden ajustar rápido (ancho de cara, barba, pelo).
+- **Expresiones con gag:** Rosco perdiendo = "¡Ay!" de dolor de espalda; Tincho ganando = sonríe exactamente un píxel; Angelito perdiendo = signo de pregunta.
+- **Tincho sin traje alternativo en el documento:** le inventamos uno: rayas celestes y blancas clásicas.
+- **Paleta:** ~54 colores en `src/art/palette.ts` (un poco más que 48 para tener tonos de piel y barba distintos para los seis).
+- **Sin escudos ni marcas:** Racing lleva un rombo celeste genérico; River y el Vikingo alternativo, solo la banda; la gorra de Volpi es lisa.
+- **`npm run sprites`** exporta las hojas a `public/sprites/` (`<personaje>_<traje>_back.png`, `_front.png` y `_retrato.png`). Con `--preview` o `--board` arma láminas ampliadas para revisar en `playtest/`.
+- **Página de comparación local:** `sprites.html` + `src/dev/` están en `.gitignore`; solo funcionan con `npm run dev` y leen las fotos de `../referencias/`.
