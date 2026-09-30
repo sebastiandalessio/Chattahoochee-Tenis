@@ -7,7 +7,7 @@ export const T = {
   // ---------------------------------------------------------------- menú de prueba (hito 1)
   testMenu: {
     heading: 'PARTIDO DE PRUEBA',
-    sub: 'Hito 1: todavía somos rectángulos. Con cariño.',
+    sub: 'Hito 2: ya tenemos cara. Y barba. Y anteojos.',
     mode: 'Modo',
     modes: ['Vos contra la CPU', '2 jugadores', 'CPU contra CPU (mirar)'],
     length: 'Duración',
@@ -16,6 +16,12 @@ export const T = {
     difficulties: ['Fácil', 'Normal', 'Nivel Chattahoochee'],
     surface: 'Superficie',
     surfaces: ['Cemento', 'Polvo verde', 'Cemento rápido'],
+    bottom: 'Abajo (vos)',
+    bottom2P: 'Abajo (J1)',
+    bottomDemo: 'Abajo (CPU)',
+    top: 'Arriba (rival)',
+    top2P: 'Arriba (J2)',
+    random: 'Al azar',
     play: '¡A JUGAR!',
     help: '↑↓ elegir · ←→ cambiar · ENTER confirmar',
   },

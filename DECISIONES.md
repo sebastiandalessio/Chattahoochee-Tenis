@@ -34,3 +34,6 @@ Cuando el documento original dejaba algo abierto, elegimos la opción más diver
 - **Sin escudos ni marcas:** Racing lleva un rombo celeste genérico; River y el Vikingo alternativo, solo la banda; la gorra de Volpi es lisa.
 - **`npm run sprites`** exporta las hojas a `public/sprites/` (`<personaje>_<traje>_back.png`, `_front.png` y `_retrato.png`). Con `--preview` o `--board` arma láminas ampliadas para revisar en `playtest/`.
 - **Página de comparación local:** `sprites.html` + `src/dev/` están en `.gitignore`; solo funcionan con `npm run dev` y leen las fotos de `../referencias/`.
+- **Fichas parejas (pedido del grupo):** todos los personajes suman 37 puntos de stats y cada atributo va de 4 a 8. Las personalidades se mantienen (Rosco lento y con poco aire, Seba volea, Tincho control, Volpi saque, Vikingo potencia, Angelito velocidad), pero ninguna diferencia es tan grande. Hay un test que lo controla.
+- **Rosco con entradas (pedido del grupo):** pelo largo a los costados, más ralo arriba y con entradas en las sienes.
+- **Volpi sin gorra con la de River (pedido del grupo):** con la remera blanca y banda roja se le ve el pelo corto oscuro con canas en los costados; con la remera negra usa la gorra de la foto. Cada traje puede tener su propia cabeza.

@@ -459,8 +459,9 @@ export function drawFrame(art: CharacterArt, outfit: Outfit, pose: Pose, view: '
   outfit.extras?.(p, j, view);
 
   // Cabeza
-  const headKey = view === 'back' ? 'back' : pose.head === 'shout' && art.heads.frontShout ? 'frontShout' : 'front';
-  const head = art.heads[headKey]!;
+  const heads = { ...art.heads, ...outfit.heads };
+  const headKey = view === 'back' ? 'back' : pose.head === 'shout' && heads.frontShout ? 'frontShout' : 'front';
+  const head = heads[headKey]!;
   const accessory = view === 'back' ? outfit.headBack : outfit.headFront;
   const ax = Math.round(j.neck[0] + (pose.headDx ?? 0));
   const ay = Math.round(j.neck[1] + (pose.headDy ?? 0));

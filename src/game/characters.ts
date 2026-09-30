@@ -27,33 +27,33 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
   elRosco: {
     id: 'elRosco',
     club: 'independiente',
-    stats: s(3, 6, 7, 5, 5, 3),
+    stats: s(4, 7, 8, 7, 7, 4),
   },
   elSeba: {
     id: 'elSeba',
     club: 'boca',
-    stats: s(8, 6, 4, 5, 9, 7),
+    stats: s(7, 6, 5, 5, 8, 6),
   },
   trueTincho: {
     id: 'trueTincho',
     club: 'racing',
-    stats: s(4, 6, 9, 6, 5, 9),
+    stats: s(5, 6, 8, 6, 5, 7),
     slowStart: true,
   },
   volpi: {
     id: 'volpi',
     club: 'river',
-    stats: s(5, 5, 7, 9, 5, 6),
+    stats: s(5, 6, 7, 8, 5, 6),
   },
   elVikingo: {
     id: 'elVikingo',
     club: 'river',
-    stats: s(5, 8, 7, 6, 4, 7),
+    stats: s(6, 8, 7, 6, 4, 6),
   },
   angelito: {
     id: 'angelito',
     club: 'neutral',
-    stats: s(9, 4, 3, 4, 5, 8),
+    stats: s(8, 5, 4, 6, 6, 8),
     short: true,
   },
 };

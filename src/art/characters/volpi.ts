@@ -1,9 +1,10 @@
-// VOLPI: gorra negra (sin logo), anteojos de sol espejados, barba corta oscura, sonrisa grande,
-// contextura mediana. Remera blanca con banda roja diagonal (River, sin escudo). Alternativo: remera negra.
+// VOLPI: anteojos de sol espejados, barba corta oscura, sonrisa grande, contextura mediana.
+// Remera blanca con banda roja diagonal (River, sin escudo), sin gorra: pelo corto oscuro con canas.
+// Alternativo: remera negra con la gorra negra lisa (sin logo).
 
 import { PAL } from '../palette';
 import type { Pose } from '../body';
-import { beardFill, ears, face, mouth, neck, newPortrait, nose, shoulders, sparkle, sweat, type Face } from '../portraitKit';
+import { beardFill, ears, face, hash2, mouth, neck, newPortrait, nose, shoulders, sparkle, sweat, type Face } from '../portraitKit';
 import type { CharacterArt, Outfit } from './types';
 
 const palette = {
@@ -11,6 +12,7 @@ const palette = {
   c: '#1f1d25',
   C: '#3b3946',
   h: '#2e2622',
+  k: '#4a3f38',
   g: '#7d7780',
   s: PAL.skinFair,
   z: PAL.skinFairShadow,
@@ -24,7 +26,7 @@ const palette = {
   m: PAL.mouth,
 };
 
-const front = [
+const frontCap = [
   '...oooooooo...',
   '..occcCCccco..',
   '.occcccccccco.',
@@ -42,17 +44,17 @@ const front = [
   '....ozzzzo....',
 ];
 
-const frontShout = [
-  ...front.slice(0, 8),
+const frontShoutCap = [
+  ...frontCap.slice(0, 8),
   '.obmmmmmmmmbo.',
   '.obmwwwwwwmbo.',
   '.obmmmmmmmmbo.',
   '..obmmmmmmbo..',
   '...obbbbbbo...',
-  ...front.slice(13),
+  ...frontCap.slice(13),
 ];
 
-const back = [
+const backCap = [
   '...oooooooo...',
   '..occcccccco..',
   '.occcccccccco.',
@@ -70,6 +72,12 @@ const back = [
   '....oooooo....',
 ];
 
+// Sin gorra: pelo corto oscuro con canas en los costados.
+const hairTop = ['...oooooooo...', '..ohhkhhhkho..', '.ohhhhhhhhhho.', '.oghhhhhhhhgo.'];
+const front = [...hairTop, ...frontCap.slice(4)];
+const frontShout = [...hairTop, ...frontShoutCap.slice(4)];
+const back = ['...oooooooo...', '..ohhhhhhhho..', '.ohhhkhhhghho.', '.ohghhhhhhhho.', ...backCap.slice(4)];
+
 // Banda roja: del hombro derecho a la cadera izquierda (en coordenadas del jugador, vale para las dos vistas).
 const river: Outfit = {
   id: 'river',
@@ -80,6 +88,7 @@ const river: Outfit = {
   shoes: PAL.dark,
 };
 
+// Con la remera negra, la gorra negra de la foto.
 const negra: Outfit = {
   id: 'negra',
   shirt: (_u, v) => (v < 1.2 ? PAL.grey1 : PAL.dark),
@@ -87,6 +96,11 @@ const negra: Outfit = {
   shorts: PAL.grey3,
   socks: PAL.white,
   shoes: PAL.white,
+  heads: {
+    front: { rows: frontCap, anchor: [7, 12] },
+    frontShout: { rows: frontShoutCap, anchor: [7, 12] },
+    back: { rows: backCap, anchor: [7, 11] },
+  },
 };
 
 const risa: Pose[] = [
@@ -134,30 +148,65 @@ function portrait(expr: 'normal' | 'win' | 'lose', outfit: Outfit) {
   );
   p.rect(26, 34, 4, 7, '#7d7780');
   p.rect(67, 34, 4, 7, '#7d7780');
-  // Gorra de béisbol negra lisa (sin logo). Copa baja con frente armada; la visera se ve
-  // desde abajo, curva hacia la cámara y con el forro gris (como en la foto).
-  p.clip = (_x, y) => y < 31;
-  p.ellipse(48, 31, 25, 19, '#1f1d25');
-  p.clip = null;
-  p.clip = (_x, y) => y < 31 && y > 15;
-  p.ellipse(48, 31, 12, 15, '#29272f');
-  p.clip = null;
-  p.thin([37, 15], [35, 30], '#3b3946');
-  p.thin([59, 15], [61, 30], '#3b3946');
-  p.rect(46, 11, 5, 2, '#3b3946');
-  p.poly(
-    [
-      [20, 30],
-      [76, 30],
-      [75, 34],
-      [66, 38],
-      [48, 41],
-      [30, 38],
-      [21, 34],
-    ],
-    (_x, y) => (y < 32 ? '#2e2c36' : PAL.grey2),
-  );
-  p.thin([28, 36], [68, 36], PAL.grey3);
+  // Con la remera blanca va sin gorra (pelo con canas); con la negra, con la gorra de la foto.
+  if (outfit.id !== 'negra') {
+    // Sin gorra: pelo corto oscuro, con canas que se hacen más en los costados.
+    p.poly(
+      [
+        [25, 40],
+        [24, 29],
+        [28, 19],
+        [36, 14],
+        [48, 12],
+        [60, 14],
+        [68, 19],
+        [72, 29],
+        [71, 40],
+        [68, 32],
+        [64, 27],
+        [56, 25],
+        [48, 26],
+        [40, 25],
+        [32, 27],
+        [28, 32],
+      ],
+      (x, y) => {
+        const r = hash2(x, y);
+        const side = Math.abs(x - 48) > 18;
+        if (r < (side ? 0.3 : 0.03)) return '#8a8490';
+        if (!side && r > 0.93) return '#4a3f38';
+        return '#2e2622';
+      },
+    );
+    // Brillo suave arriba.
+    p.thin([40, 16], [46, 15], '#4a3f38');
+    p.thin([51, 15], [57, 16], '#4a3f38');
+  } else {
+    // Gorra de béisbol negra lisa (sin logo). Copa baja con frente armada; la visera se ve
+    // desde abajo, curva hacia la cámara y con el forro gris (como en la foto).
+    p.clip = (_x, y) => y < 31;
+    p.ellipse(48, 31, 25, 19, '#1f1d25');
+    p.clip = null;
+    p.clip = (_x, y) => y < 31 && y > 15;
+    p.ellipse(48, 31, 12, 15, '#29272f');
+    p.clip = null;
+    p.thin([37, 15], [35, 30], '#3b3946');
+    p.thin([59, 15], [61, 30], '#3b3946');
+    p.rect(46, 11, 5, 2, '#3b3946');
+    p.poly(
+      [
+        [20, 30],
+        [76, 30],
+        [75, 34],
+        [66, 38],
+        [48, 41],
+        [30, 38],
+        [21, 34],
+      ],
+      (_x, y) => (y < 32 ? '#2e2c36' : PAL.grey2),
+    );
+    p.thin([28, 36], [68, 36], PAL.grey3);
+  }
 
   // Anteojos espejados: dos lentes con reflejo celeste.
   for (const x of [37, 59]) {

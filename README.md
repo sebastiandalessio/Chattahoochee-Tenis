@@ -10,7 +10,7 @@ Un videojuego de tenis pixel art sobre los partidos amateur de los Chattahoochee
 
 También se puede bajar el juego entero en un solo archivo: [Chattahoochee-Tenis.html](https://sebastiandalessio.github.io/Chattahoochee-Tenis/Chattahoochee-Tenis.html) (se abre con doble clic en Chrome o Edge).
 
-> Estado: **hito 1** — partido jugable con rectángulos grises. Los personajes llegan en el hito 2.
+> Estado: **hito 2** — partido jugable con los seis Chattahoochees en pixel art (con sus retratos y trajes alternativos). Las sedes, los especiales y la torre llegan en los próximos hitos.
 
 ## Controles
 

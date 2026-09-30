@@ -61,20 +61,20 @@ const state = () =>
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 try {
-  // ------------------------------------------------------------ archivo único (doble clic, sin servidor)
+  // ------------------------------------------------------------ archivo Ãºnico (doble clic, sin servidor)
   if (which === 'file') {
     const file = path.join(root, 'dist', 'Chattahoochee-Tenis.html');
-    console.log('Archivo único:', file);
+    console.log('Archivo Ãºnico:', file);
     await page.goto(`file:///${file.replace(/\\/g, '/')}?demo=1&speed=3&games=2`);
     await sleep(4000);
     await shot('07-archivo-unico');
     const s = await state();
-    console.log('  corre:', s ? `sí (fase ${s.phase}, t=${s.time.toFixed(1)}s)` : 'NO');
+    console.log('  corre:', s ? `sÃ­ (fase ${s.phase}, t=${s.time.toFixed(1)}s)` : 'NO');
   }
 
   // ------------------------------------------------------------ pantalla final: Enter y Esc
   if (which === 'all' || which === 'end') {
-    console.log('Pantalla final (Enter = otro partido, Esc = menú)');
+    console.log('Pantalla final (Enter = otro partido, Esc = menÃº)');
     const waitEnd = async () => {
       const t0 = Date.now();
       let s = await state();
@@ -92,23 +92,23 @@ try {
     let s = await state();
     const scenes = () =>
       page.evaluate(() => window.__cht.scene.game.scene.getScenes(true).map((x) => x.sys.settings.key));
-    console.log('  después de Enter:', s?.phase, 't=', s?.time.toFixed(1), 'escenas', JSON.stringify(await scenes()));
+    console.log('  despuÃ©s de Enter:', s?.phase, 't=', s?.time.toFixed(1), 'escenas', JSON.stringify(await scenes()));
     await waitEnd();
     await page.keyboard.press('Escape');
     await sleep(1200);
-    console.log('  después de Esc: escenas', JSON.stringify(await scenes()));
+    console.log('  despuÃ©s de Esc: escenas', JSON.stringify(await scenes()));
     await shot('09-final-despues-esc');
   }
 
-  // ------------------------------------------------------------ pantalla final jugando vos (desde el menú)
+  // ------------------------------------------------------------ pantalla final jugando vos (desde el menÃº)
   if (which === 'all' || which === 'end1p') {
-    console.log('Pantalla final en 1 jugador, entrando desde el menú');
+    console.log('Pantalla final en 1 jugador, entrando desde el menÃº');
     const scenes = () =>
       page.evaluate(() => window.__cht?.scene.game.scene.getScenes(true).map((x) => x.sys.settings.key));
     await page.goto(base);
     await sleep(800);
     for (let round = 0; round < 2; round++) {
-      // En el menú: ir a "Duración", elegir 2 games y arrancar.
+      // En el menÃº: ir a "DuraciÃ³n", elegir 2 games y arrancar.
       await page.keyboard.press('Enter');
       await sleep(800);
       await page.evaluate(() => {
@@ -127,31 +127,51 @@ try {
         await sleep(40);
         s = await state();
       }
-      // Apretar Enter/Esc apenas termina (antes de que aparezca el cartel) y después.
+      // Apretar Enter/Esc apenas termina (antes de que aparezca el cartel) y despuÃ©s.
       await page.keyboard.press(round === 0 ? 'Enter' : 'Escape');
       await sleep(2500);
       await shot(`10-final-1p-${round}`);
       console.log(`  ronda ${round}: escenas`, JSON.stringify(await scenes()), 'fase', (await state())?.phase);
       await page.keyboard.press(round === 0 ? 'Enter' : 'Escape');
       await sleep(1500);
-      console.log(`  ronda ${round} después de ${round === 0 ? 'Enter' : 'Esc'}:`, JSON.stringify(await scenes()), (await state())?.phase);
+      console.log(`  ronda ${round} despuÃ©s de ${round === 0 ? 'Enter' : 'Esc'}:`, JSON.stringify(await scenes()), (await state())?.phase);
       if (round === 0) {
-        // Volver al menú con la pausa para probar la segunda visita.
+        // Volver al menÃº con la pausa para probar la segunda visita.
         await page.keyboard.press('Escape');
         await sleep(300);
         await page.keyboard.press('ArrowUp');
         await sleep(100);
         await page.keyboard.press('Enter');
         await sleep(1000);
-        console.log('  pausa → menú:', JSON.stringify(await scenes()));
+        console.log('  pausa â†’ menÃº:', JSON.stringify(await scenes()));
         await shot('11-menu-segunda-visita');
       }
     }
   }
 
-  // ------------------------------------------------------------ página local de personajes
+  // ------------------------------------------------------------ personajes en la cancha
+  if (which === 'all' || which === 'chars') {
+    console.log('Personajes en la cancha');
+    const pairs = [
+      ['elRosco', 'trueTincho'],
+      ['elSeba', 'volpi'],
+      ['angelito', 'elVikingo'],
+    ];
+    for (const [a, b] of pairs) {
+      await page.goto(`${base}?demo=1&games=2&speed=1&seed=9&p1=${a}&p2=${b}`);
+      await sleep(1200);
+      for (let i = 0; i < 3; i++) {
+        await sleep(1500);
+        await shot(`12-${a}-vs-${b}-${i}`);
+      }
+      const s = await state();
+      console.log(`  ${a} vs ${b}: fase ${s?.phase}, fps ${s?.fps?.toFixed(0)}`);
+    }
+  }
+
+  // ------------------------------------------------------------ pÃ¡gina local de personajes
   if (which === 'sprites') {
-    console.log('Página sprites.html');
+    console.log('PÃ¡gina sprites.html');
     await page.goto(`${base}sprites.html`);
     await sleep(2500);
     const photos = await page.evaluate(() =>
@@ -168,7 +188,7 @@ try {
 
   // ------------------------------------------------------------ captura para el README
   if (which === 'captura') {
-    await page.goto(`${base}?demo=1&games=4&seed=5`);
+    await page.goto(`${base}?demo=1&games=4&seed=5&p1=elSeba&p2=volpi`);
     const t0 = Date.now();
     let s = await state();
     await sleep(3000);
@@ -182,9 +202,9 @@ try {
     console.log('  captura: docs/captura.png');
   }
 
-  // ------------------------------------------------------------ menú
+  // ------------------------------------------------------------ menÃº
   if (which === 'all' || which === 'menu') {
-    console.log('Menú de prueba');
+    console.log('MenÃº de prueba');
     await page.goto(base);
     await sleep(800);
     await shot('01-menu');

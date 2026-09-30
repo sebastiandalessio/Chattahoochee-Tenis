@@ -37,11 +37,12 @@ const palette = {
   m: PAL.mouth,
 };
 
+// Arriba: pelo más ralo, con entradas en las sienes y un mechón al medio.
 const front = [
   '....oooooo....',
-  '..oohkkhhhoo..',
-  '.ohhhkkhhhhho.',
-  '.ohhsssssshho.',
+  '..oohhkhhhoo..',
+  '.ohhsshhsshho.',
+  '.ohssssssssho.',
   'ohhsssssssshho',
   'ohzsBBsssBBzho',
   'ohseesssseesho',
@@ -57,9 +58,9 @@ const front = [
 
 const frontShout = [
   '....oooooo....',
-  '..oohkkhhhoo..',
-  '.ohhhkkhhhhho.',
-  '.ohhsssssshho.',
+  '..oohhkhhhoo..',
+  '.ohhsshhsshho.',
+  '.ohssssssssho.',
   'ohhsssssssshho',
   'ohzBBssssBBzho',
   'ohseesssseesho',
@@ -75,8 +76,8 @@ const frontShout = [
 
 const back = [
   '....oooooo....',
-  '..oohhkkhhoo..',
-  '.ohhhkkhhhhho.',
+  '..oohhskhhoo..',
+  '.ohhhsshhhhho.',
   '.ohhhhhhhhhho.',
   'ohhhhhhhhhhhho',
   'ohhhhkhhhhhhho',
@@ -133,11 +134,11 @@ function portrait(expr: 'normal' | 'win' | 'lose', outfit: Outfit) {
     return Math.floor((u + 200) / 7) % 2 === 0 ? PAL.red : PAL.dark;
   }, 47, 79);
   neck(p, f, 12);
-  // Pelo largo de atrás, cayendo a los costados.
+  // Pelo largo de atrás, cayendo a los costados (sigue largo, eso no cambia).
   p.poly(
     [
-      [21, 22],
-      [75, 22],
+      [22, 28],
+      [74, 28],
       [79, 44],
       [77, 60],
       [70, 62],
@@ -151,34 +152,45 @@ function portrait(expr: 'normal' | 'win' | 'lose', outfit: Outfit) {
   );
   ears(p, f, 49);
   face(p, f);
-  // Casquete peinado para atrás, con entradas.
+  // Cuero cabelludo arriba (se asoma entre el pelo ralo).
+  p.clip = (_x, y) => y < 30;
+  p.ellipse(48, 31, 24, 22, PAL.skinRosy);
+  p.clip = null;
+  // Pelo peinado para atrás, más ralo arriba y con entradas en las sienes (hairline en M).
   p.poly(
     [
-      [23, 30],
-      [26, 16],
-      [36, 8],
-      [48, 6],
-      [60, 8],
-      [70, 16],
-      [73, 30],
-      [67, 26],
-      [61, 20],
-      [54, 18],
-      [48, 19],
-      [42, 18],
-      [35, 20],
-      [29, 26],
+      [23, 34],
+      [25, 21],
+      [31, 12],
+      [40, 8],
+      [56, 8],
+      [65, 12],
+      [71, 21],
+      [73, 34],
+      [68, 29],
+      [63, 21],
+      [58, 15],
+      [53, 17],
+      [48, 21],
+      [43, 17],
+      [38, 15],
+      [33, 21],
+      [28, 29],
     ],
-    PAL.hairBrown,
+    // Mechones con huecos: cerca de la frente se ve más el cuero, atrás es más tupido.
+    (x, y) => {
+      const gapEvery = y < 13 ? 7 : 4;
+      return (x + Math.round(y * 0.35)) % gapEvery === 0 ? null : PAL.hairBrown;
+    },
   );
   // Mechones mojados.
   for (const [a, b] of [
-    [[33, 20], [38, 9]],
-    [[42, 18], [44, 7]],
-    [[53, 18], [53, 7]],
-    [[62, 20], [60, 10]],
-    [[27, 27], [30, 16]],
-    [[69, 27], [67, 16]],
+    [[35, 19], [39, 9]],
+    [[45, 18], [46, 8]],
+    [[51, 18], [51, 8]],
+    [[61, 19], [58, 10]],
+    [[27, 28], [30, 17]],
+    [[69, 28], [67, 17]],
   ] as [[number, number], [number, number]][]) {
     p.thin(a, b, PAL.hairBrownHi);
   }

@@ -29,6 +29,8 @@ export interface Outfit {
   shoes: string;
   headFront?: Accessory;
   headBack?: Accessory;
+  /** Cabezas propias de este traje (por ejemplo, Volpi con gorra solo con la remera negra). */
+  heads?: Partial<CharacterArt['heads']>;
   /** Detalles extra sobre el cuerpo (corbata, credencial, cinturón de herramientas). */
   extras?: (p: Painter, j: Joints, view: 'back' | 'front') => void;
 }

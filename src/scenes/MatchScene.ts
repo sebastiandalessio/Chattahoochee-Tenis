@@ -5,7 +5,6 @@ import { COURT } from '../logic/court';
 import { horizontalSpeed } from '../logic/physics';
 import { createRng } from '../logic/rng';
 import { describeScore, other, pointLabel, type ScoreEvent, type Side } from '../logic/scoring';
-import { NEUTRAL_STATS } from '../logic/stats';
 import { keyboard, KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B } from '../input/keyboard';
 import { CpuBrain } from '../sim/ai';
 import { emptyInput, type PlayerInput } from '../sim/input';
@@ -13,8 +12,11 @@ import { Match, type MatchEvent, type PlayerSim } from '../sim/match';
 import { pick, T } from '../texts/es';
 import { sfx } from '../audio/sfx';
 import { project, scaleAt } from '../game/projection';
-import { RectPlayerView, type PlayerView } from '../game/rectPlayerView';
-import { DEFAULT_SETUP, difficultyParams, surfaceOf, type MatchSetup } from '../game/setup';
+import type { PlayerView } from '../game/playerView';
+import { SpritePlayerView } from '../game/spritePlayerView';
+import { ensureCharacterTextures } from '../game/spriteTextures';
+import { CHARACTERS, type CharacterId } from '../game/characters';
+import { DEFAULT_SETUP, difficultyParams, resolveChars, surfaceOf, type MatchSetup } from '../game/setup';
 import { drawCourtCanvas, drawNetCanvas, addCanvasTexture, GREY_THEME } from '../game/textures';
 import { pxText } from '../ui/pixelFont';
 import { Bubble, Commentary, UI, banner, drawBox, fullscreenButton } from '../ui/widgets';
@@ -87,32 +89,32 @@ export class MatchScene extends Phaser.Scene {
     const diff = difficultyParams(s.difficulty);
     const human0 = s.mode !== 'demo';
     const human1 = s.mode === '2p';
-    this.names =
-      s.mode === '2p'
-        ? [T.names.p1, T.names.p2]
-        : s.mode === 'demo'
-          ? [T.names.cpuB, T.names.cpuA]
-          : [T.names.you, T.names.cpu];
+    const seed = s.seed ?? Math.floor(Math.random() * 1e9);
+    const rng = createRng(seed ^ 0x9e3779b9);
+    const chars = resolveChars(s.chars, () => rng.next());
+    // Espejo (el mismo personaje de los dos lados): el de arriba usa el traje alternativo.
+    const outfits: [number, number] = [0, chars[0] === chars[1] ? 1 : 0];
+    this.names = [T.characters[chars[0]].name, T.characters[chars[1]].name];
 
-    const setupFor = (human: boolean) => ({
-      stats: NEUTRAL_STATS,
+    const setupFor = (human: boolean, id: CharacterId) => ({
+      stats: CHARACTERS[id].stats,
+      short: CHARACTERS[id].short,
+      slowStart: CHARACTERS[id].slowStart,
       human,
       errorMul: human ? 1 : diff.cpuErrorMul,
       assist: human ? diff.humanAssist : 0,
       serveMeterHalfPeriod: human ? diff.humanMeterHalf : 0.42,
     });
-    const seed = s.seed ?? Math.floor(Math.random() * 1e9);
     this.match = new Match({
       rules: { gamesPerSet: s.games },
       surface: surfaceOf(s),
       players: [
-        { name: this.names[0], ...setupFor(human0) },
-        { name: this.names[1], ...setupFor(human1) },
+        { name: this.names[0], ...setupFor(human0, chars[0]) },
+        { name: this.names[1], ...setupFor(human1, chars[1]) },
       ],
       seed,
       firstServer: seed % 2 === 0 ? 0 : 1,
     });
-    const rng = createRng(seed ^ 0x9e3779b9);
     this.brains = [human0 ? null : new CpuBrain(0, diff.ai, rng), human1 ? null : new CpuBrain(1, diff.ai, rng)];
 
     // Cancha.
@@ -129,11 +131,12 @@ export class MatchScene extends Phaser.Scene {
     this.add.image(Math.round(chair.sx), Math.round(chair.sy) - 14, 'ganso').setOrigin(0.5, 1).setDepth(chair.sy + 0.1);
     this.umpirePos = { x: Math.round(chair.sx) + 2, y: Math.round(chair.sy) - 30 };
 
-    // Jugadores.
+    // Jugadores (en 2P, una etiqueta chiquita para saber quién es quién).
     for (const side of [0, 1] as Side[]) {
-      const tag = s.mode === '2p' ? (side === 0 ? 'J1' : 'J2') : this.match.players[side].setup.human ? '' : 'CPU';
+      const tag = s.mode === '2p' ? (side === 0 ? 'J1' : 'J2') : '';
       const label = tag ? pxText(this, 0, 0, tag, { outline: true, color: side === 0 ? UI.cyan : UI.red }) : null;
-      this.views.push(new RectPlayerView(this, side, label));
+      const tex = ensureCharacterTextures(this, chars[side], outfits[side]);
+      this.views.push(new SpritePlayerView(this, side, tex, label));
     }
 
     // Pelota.
