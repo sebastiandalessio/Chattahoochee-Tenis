@@ -169,6 +169,66 @@ try {
     }
   }
 
+  // ------------------------------------------------------------ mística: especiales en acción
+  if (which === 'all' || which === 'mistica') {
+    console.log('Mística y especiales');
+    const pairs = [
+      ['volpi', 'angelito'],
+      ['elVikingo', 'elSeba'],
+      ['trueTincho', 'elRosco'],
+    ];
+    const fillRecipes = () =>
+      page.evaluate(() => {
+        const m = window.__cht.match;
+        for (const p of m.players) for (const i of [0, 1, 2]) m.myst.tick(p, i);
+      });
+    for (const [a, b] of pairs) {
+      await page.goto(`${base}?demo=1&games=4&speed=1&seed=31&p1=${a}&p2=${b}`);
+      await sleep(1500);
+      const taken = new Set();
+      const t0 = Date.now();
+      while (Date.now() - t0 < 75000 && taken.size < 6) {
+        await fillRecipes();
+        const s = await page.evaluate(() => {
+          const c = window.__cht;
+          const m = c.match;
+          return {
+            freeze: c.scene.freeze,
+            ghosts: m.ghosts.length,
+            loader: m.players.some((p) => p.mods.pointBuff === 'minicargadora'),
+            dinein: m.players.some((p) => p.mods.pointBuff === 'dinein'),
+            obra: !!m.obra,
+            tag: m.ball.tag,
+            hurt: m.players.some((p) => p.anim === 'hurt' || p.anim === 'taunt'),
+          };
+        });
+        const want = [
+          ['cutin', s.freeze > 0.8],
+          ['betty', s.ghosts > 0],
+          ['loader', s.loader],
+          ['obra', s.obra && !s.loader],
+          ['frita', s.tag === 'frita'],
+          ['paralelo', s.tag === 'paralelo'],
+          ['rey', s.tag === 'reyDeCopas'],
+          ['dinein', s.dinein],
+          ['gesto', s.hurt],
+        ];
+        for (const [name, ok] of want) {
+          if (ok && !taken.has(name)) {
+            taken.add(name);
+            // El título del cut-in entra animado: esperar a que se vea.
+            if (name === 'cutin') await sleep(450);
+            // Las tres pelotas de Betty salen juntas del cañón: esperar a que se separen.
+            if (name === 'betty' || name === 'rey' || name === 'paralelo') await sleep(250);
+            await shot(`13-${a}-${name}`);
+          }
+        }
+        await sleep(60);
+      }
+      console.log(`  ${a} vs ${b}: capturas ${[...taken].join(', ')}`);
+    }
+  }
+
   // ------------------------------------------------------------ página local de personajes
   if (which === 'sprites') {
     console.log('Página sprites.html');

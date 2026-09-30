@@ -63,6 +63,11 @@ export class Rally {
     if (this.decided || this.lastHitter === null) return { type: 'continue' };
     this.netTouchedSinceHit = true;
     this.decided = true;
+    // Ya picó bien y después se fue contra la red (un efecto que la trae de vuelta):
+    // el rival no llegó a devolverla, el punto es de quien pegó.
+    if (this.bouncesSinceHit >= 1) {
+      return { type: 'point', winner: this.lastHitter, reason: this.isServe ? 'ace' : 'winner' };
+    }
     if (this.isServe) return { type: 'fault', reason: 'net' };
     return { type: 'point', winner: other(this.lastHitter), reason: 'net' };
   }

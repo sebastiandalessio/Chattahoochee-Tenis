@@ -46,6 +46,8 @@ export interface Ball {
   bounceE: number;
   bounceF: number;
   rolling: boolean;
+  /** Marca de golpe especial (pelota frita, paralelo académico, etc.). */
+  tag?: string | null;
 }
 
 export type BallEvent =

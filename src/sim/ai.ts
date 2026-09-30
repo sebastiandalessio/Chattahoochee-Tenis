@@ -1,10 +1,13 @@
 // CPU: produce la misma entrada que un humano (moverse y apretar botones), leyendo el partido.
 
 import { COURT } from '../logic/court';
+import type { Ball } from '../logic/physics';
 import type { Rng } from '../logic/rng';
 import { other } from '../logic/scoring';
 import { emptyInput, type PlayerInput } from './input';
 import { Match, ZONE, type InterceptPlan, type PlayerSim } from './match';
+import type { Personality } from './personalities';
+import { SHOT_SPECIALS } from './rules';
 
 export interface AiProfile {
   /** Segundos que tarda en reaccionar al golpe del rival. */
@@ -50,9 +53,19 @@ type ShotPlan = {
   charge: boolean;
 };
 
+const DEFAULT_EXTRA = {
+  lobBase: 0,
+  tauntChance: 0.3,
+  givesUp: false,
+  stayAfterHit: false,
+  crossBias: false,
+  lineWhenBehind: false,
+  errorMul: 1,
+};
+
 export class CpuBrain {
   readonly side: 0 | 1;
-  profile: AiProfile;
+  profile: Personality;
   private rng: Rng;
   private reactT = 0;
   private plan: InterceptPlan | null = null;
@@ -64,10 +77,15 @@ export class CpuBrain {
   private holdT = 0;
   private goNet = false;
   private letItGo = false;
+  private gaveUp = false;
+  private tauntDecided = false;
+  private specialDecidedPoint = -1;
+  private ghostChoice: Ball | null | undefined = undefined;
+  private stayAt: { x: number; y: number } | null = null;
 
-  constructor(side: 0 | 1, profile: AiProfile, rng: Rng) {
+  constructor(side: 0 | 1, profile: AiProfile | Personality, rng: Rng) {
     this.side = side;
-    this.profile = profile;
+    this.profile = { ...DEFAULT_EXTRA, ...profile };
     this.rng = rng;
   }
 
@@ -85,6 +103,15 @@ export class CpuBrain {
       } else this.pressedHit = false;
     }
 
+    this.thinkSpecial(m, me, input);
+
+    if (m.phase === 'dead') {
+      this.thinkTaunt(m, me, input);
+      this.moveTo(input, me, 0, -me.facing * (COURT.halfLength + 0.8), 0.5);
+      return input;
+    }
+    this.tauntDecided = false;
+
     if (m.phase === 'preServe') {
       this.resetRally();
       if (m.rally.server === this.side) {
@@ -95,7 +122,6 @@ export class CpuBrain {
         }
       } else {
         this.serveWait = 0;
-        this.moveTo(input, me, me.x, me.y, dt);
       }
       return input;
     }
@@ -104,7 +130,8 @@ export class CpuBrain {
     if (m.phase === 'toss') {
       if (m.rally.server === this.side) {
         const want = m.attempt === 1 ? this.profile.serveFirst : this.profile.serveSecond;
-        const rising = m.tossT % (2 * (me.setup.serveMeterHalfPeriod ?? 0.42)) < (me.setup.serveMeterHalfPeriod ?? 0.42);
+        const half = me.setup.serveMeterHalfPeriod ?? 0.42;
+        const rising = m.tossT % (2 * half) < half;
         if ((rising && m.meter >= want - 0.02 && m.ball.z >= 1.8) || (m.ball.vz < 0 && m.ball.z < 1.85)) {
           input.hit = !me.input.hit;
           // Apunta: abierto, a la T o al cuerpo.
@@ -115,8 +142,7 @@ export class CpuBrain {
     }
 
     if (m.phase !== 'rally') {
-      // Entre puntos: volver caminando al centro.
-      this.moveTo(input, me, 0, -me.facing * (COURT.halfLength + 0.8), dt, 0.5);
+      this.moveTo(input, me, 0, -me.facing * (COURT.halfLength + 0.8), 0.5);
       return input;
     }
 
@@ -124,13 +150,19 @@ export class CpuBrain {
     if (m.rally.lastHitter !== this.lastHitterSeen) {
       this.lastHitterSeen = m.rally.lastHitter;
       if (m.rally.lastHitter === opp.side) {
-        this.reactT = this.profile.reaction * this.rng.range(0.7, 1.3);
+        // El Dardo del Vikingo: su golpe no delata para dónde va.
+        const dardo = opp.charId === 'elVikingo' ? 0.12 : 0;
+        this.reactT = (this.profile.reaction + dardo) * this.rng.range(0.7, 1.3);
         this.plan = null;
         this.shot = null;
         this.letItGo = false;
+        this.gaveUp = false;
+        this.ghostChoice = undefined;
+        this.stayAt = null;
       } else {
-        // Acabo de pegar yo: ¿subo a la red?
+        // Acabo de pegar yo: ¿subo a la red? ¿me quedo donde estoy?
         this.goNet = this.rng.chance(this.profile.netRush) && Math.abs(me.y) < COURT.halfLength + 0.5;
+        this.stayAt = this.profile.stayAfterHit && this.rng.chance(0.7) ? { x: me.x, y: me.y } : null;
       }
     }
 
@@ -139,22 +171,32 @@ export class CpuBrain {
         this.reactT -= dt;
         return input;
       }
+      // Betty: tres pelotas iguales. La CPU a veces sigue una fantasma.
+      if (this.ghostChoice === undefined && m.ghosts.length > 0) {
+        this.ghostChoice = this.rng.chance(0.6) ? this.rng.pick(m.ghosts).ball : null;
+      }
+      const followGhost = this.ghostChoice && m.ghosts.some((g) => g.ball === this.ghostChoice) ? this.ghostChoice : undefined;
       this.planT -= dt;
       if (!this.plan || this.planT <= 0) {
-        this.plan = m.planIntercept(me, { allowVolley: Math.abs(me.y) < 7.5 });
+        this.plan = m.planIntercept(me, { allowVolley: Math.abs(me.y) < 7.5, ball: followGhost });
         this.planT = 0.12;
-        if (this.plan?.goingOut && !this.rng.chance(this.profile.misjudge)) this.letItGo = true;
+        if (this.plan?.goingOut && !followGhost && !this.rng.chance(this.profile.misjudge)) this.letItGo = true;
+        // Rosco: "No, esa no". Si no llega, ni la corre.
+        if (this.profile.givesUp && this.plan && !this.plan.feasible && !this.gaveUp && this.rng.chance(0.7)) {
+          this.gaveUp = true;
+          m.emit({ type: 'emote', side: me.side, text: 'noChase' });
+        }
       }
       if (!this.shot) this.shot = this.chooseShot(m, me, opp);
 
       if (this.letItGo) {
-        // Se aparta y la deja pasar.
         const away = me.x - m.ball.x >= 0 ? 1 : -1;
-        this.moveTo(input, me, m.ball.x + away * 2.2, me.y, dt);
+        this.moveTo(input, me, m.ball.x + away * 2.2, me.y);
         return input;
       }
+      if (this.gaveUp) return input;
 
-      if (this.plan) this.moveTo(input, me, this.plan.x, this.plan.y, dt);
+      if (this.plan) this.moveTo(input, me, this.plan.x, this.plan.y);
 
       if (m.ballForMe(me) && !this.pressedHit && me.swingT <= 0 && !me.prep) {
         const zi = m.zoneInfo(me);
@@ -162,7 +204,7 @@ export class CpuBrain {
         const trigger =
           zi.inDepth &&
           zi.inHeight &&
-          Math.abs(zi.l) <= me.phys.reach + ZONE.diveExtra * 0.9 &&
+          Math.abs(zi.l) <= zi.reach + ZONE.diveExtra * 0.9 &&
           (zi.d <= shot.dTrigger || zi.d <= ZONE.dMin + 0.2);
         if (trigger) {
           this.press(input, shot, false);
@@ -181,11 +223,54 @@ export class CpuBrain {
     }
 
     // La pelota va hacia el rival: reacomodarse.
+    if (this.stayAt) {
+      this.moveTo(input, me, this.stayAt.x, this.stayAt.y);
+      return input;
+    }
     const shot = m.lastShot;
     const homeX = shot ? shot.intended.x * 0.3 : 0;
     const homeY = this.goNet ? -me.facing * 2.6 : -me.facing * (COURT.halfLength + 0.9);
-    this.moveTo(input, me, homeX, homeY, dt);
+    this.moveTo(input, me, homeX, homeY);
     return input;
+  }
+
+  /** Cargadas: después de ganar un punto (o cuando la receta la pide). */
+  private thinkTaunt(m: Match, me: PlayerSim, input: PlayerInput): void {
+    if (this.tauntDecided || me.mods.tauntedThisDead || m.phaseT < 0.45) return;
+    this.tauntDecided = true;
+    const won = m.lastPointWinner === me.side;
+    const r = m.myst.rulesOf(me);
+    const st = m.myst.states[me.side];
+    const needs = (id: string) => !!r && r.recipe.includes(id as never) && !st.recipe[r.recipe.indexOf(id as never)];
+    let chance = won ? this.profile.tauntChance : 0;
+    if (won && (needs('tauntAfterWin') || needs('tauntAny'))) chance = 0.85;
+    if (needs('mateLosing') && m.myst.isBehind(me)) chance = 0.9;
+    if (this.rng.chance(chance)) input.taunt = true;
+  }
+
+  /** Especiales: los "de golpe" se cargan cuando viene la pelota; los otros, al empezar el punto. */
+  private thinkSpecial(m: Match, me: PlayerSim, input: PlayerInput): void {
+    if (!m.myst.ready(me) || me.mods.armed || me.mods.pointBuff) return;
+    const r = m.myst.rulesOf(me)!;
+    const pointId = m.score.totalPointsPlayed;
+    const isShot = SHOT_SPECIALS.includes(r.special);
+    // Tincho guarda el paralelo para cuando va abajo en games (o le quiebran el saque).
+    if (r.special === 'paralelo') {
+      const sc = m.score;
+      const op = other(me.side);
+      const behindGames = sc.games[me.side] < sc.games[op];
+      const breakPoint = sc.server === me.side && sc.points[op] >= 3 && sc.points[op] > sc.points[me.side];
+      if (!behindGames && !breakPoint) return;
+    }
+    if (isShot) {
+      if (m.phase === 'rally' && m.ballIncoming(me) && m.ball.y * me.facing > 0 && this.specialDecidedPoint !== pointId) {
+        this.specialDecidedPoint = pointId;
+        if (this.rng.chance(0.4)) input.special = true;
+      }
+    } else if (m.phase === 'preServe' && m.phaseT > 0.4 && this.specialDecidedPoint !== pointId) {
+      this.specialDecidedPoint = pointId;
+      if (this.rng.chance(0.4)) input.special = true;
+    }
   }
 
   private resetRally(): void {
@@ -194,6 +279,9 @@ export class CpuBrain {
     this.lastHitterSeen = null;
     this.goNet = false;
     this.letItGo = false;
+    this.gaveUp = false;
+    this.ghostChoice = undefined;
+    this.stayAt = null;
   }
 
   private press(input: PlayerInput, shot: ShotPlan, charging: boolean): void {
@@ -213,25 +301,30 @@ export class CpuBrain {
     let button: 'hit' | 'slice' = 'hit';
     let holdSlice = false;
     let depth = this.rng.chance(0.5) ? 1 : 0;
-    if (oppAtNet && this.rng.chance(p.lobChance)) {
+    if ((oppAtNet && this.rng.chance(p.lobChance)) || this.rng.chance(p.lobBase)) {
       button = 'slice';
       holdSlice = true;
       depth = 1;
-    } else if (this.rng.chance(p.dropChance) && Math.abs(me.y) < COURT.halfLength) {
-      button = 'slice';
+    } else if (this.rng.chance(p.dropChance) && Math.abs(me.y) < COURT.halfLength + 1) {
+      button = this.rng.chance(0.5) ? 'slice' : 'hit';
       depth = -1;
     } else if (this.rng.chance(p.sliceChance)) {
       button = 'slice';
     }
     let aimX = this.rng.pick([-0.6, 0, 0.6]);
     if (this.rng.chance(p.aimSmart)) aimX = (opp.x > 0.8 ? -1 : opp.x < -0.8 ? 1 : this.rng.pick([-1, 1])) * 0.8;
-    const charge = button === 'hit' && !oppAtNet && this.rng.chance(p.chargeChance);
+    // El Vikingo: cruzado y profundo. Tincho, yendo abajo: el paralelo.
+    if (p.crossBias && this.rng.chance(0.7)) {
+      aimX = -(Math.sign(me.x) || 1) * 0.9;
+      depth = 1;
+    }
+    if (p.lineWhenBehind && m.myst.isBehind(me) && this.rng.chance(0.7)) aimX = (Math.sign(me.x) || 1) * 0.9;
+    const charge = button === 'hit' && !oppAtNet && depth >= 0 && this.rng.chance(p.chargeChance);
     const dTrigger = ZONE.dIdeal + this.rng.gauss() * p.timingJitter * 0.5;
-    void m;
     return { button, holdSlice, aimX, depth, dTrigger, charge };
   }
 
-  private moveTo(input: PlayerInput, me: PlayerSim, tx: number, ty: number, _dt: number, speed = 1): void {
+  private moveTo(input: PlayerInput, me: PlayerSim, tx: number, ty: number, speed = 1): void {
     const dx = tx - me.x;
     const dy = ty - me.y;
     const dist = Math.hypot(dx, dy);

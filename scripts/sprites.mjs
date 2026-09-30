@@ -16,6 +16,29 @@ mkdirSync(outDir, { recursive: true });
 const server = await createServer({ root, logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 try {
   const mod = await server.ssrLoadModule('/src/art/sheets.ts');
+  if (process.argv.includes('--objects')) {
+    // Lámina de objetos (Betty, Mabel, minicargadora...) ampliada x6, para revisar.
+    const o = await server.ssrLoadModule('/src/art/objects.ts');
+    const imgs = [o.drawBetty(), o.drawMabel('normal'), o.drawMabel('ding'), o.drawLoader(), o.drawCone(), o.drawPothole(), o.drawSign(), o.drawFriedBall()];
+    const W = imgs.reduce((a, i) => a + i.w + 4, 0);
+    const H = Math.max(...imgs.map((i) => i.h));
+    const data = new Uint8ClampedArray(W * H * 4);
+    for (let i = 0; i < data.length; i += 4) data.set([108, 116, 132, 255], i);
+    let ox = 0;
+    for (const img of imgs) {
+      for (let y = 0; y < img.h; y++)
+        for (let x = 0; x < img.w; x++) {
+          const s = (y * img.w + x) * 4;
+          if (img.data[s + 3] === 0) continue;
+          data.set(img.data.subarray(s, s + 4), (y * W + ox + x) * 4);
+        }
+      ox += img.w + 4;
+    }
+    const pdir = path.join(root, 'playtest', 'sprites');
+    mkdirSync(pdir, { recursive: true });
+    writeFileSync(path.join(pdir, 'objetos.png'), encodePNG(W, H, data, 6));
+    console.log('playtest/sprites/objetos.png');
+  }
   if (process.argv.includes('--board')) {
     // Lámina de revisión (todos los personajes juntos), solo para mirar: va a playtest/.
     const pdir = path.join(root, 'playtest', 'sprites');

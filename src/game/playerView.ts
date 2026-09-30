@@ -5,4 +5,5 @@ import type { Match, PlayerSim } from '../sim/match';
 export interface PlayerView {
   update(p: PlayerSim, m: Match): void;
   destroy(): void;
+  hidden: boolean;
 }

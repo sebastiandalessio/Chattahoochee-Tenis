@@ -112,4 +112,63 @@ export const sfx = {
   bip(): void {
     tone(900, 0.03, 'square', 0.05);
   },
+  /** ¡Clinc! Un paso de la receta. */
+  clinc(): void {
+    tone(1320, 0.06, 'square', 0.08);
+    tone(1980, 0.12, 'triangle', 0.1, undefined, 0.05);
+  },
+  ready(): void {
+    [660, 830, 990, 1320].forEach((f, i) => tone(f, 0.1, 'square', 0.07, undefined, 0.12 + i * 0.07));
+  },
+  special(): void {
+    tone(220, 0.35, 'sawtooth', 0.1, 880);
+    burst(0.4, 0.3, 2400, 0.8, 0.05);
+  },
+  whoosh(): void {
+    burst(0.25, 0.4, 1600, 0.6);
+    tone(900, 0.2, 'sine', 0.06, 300);
+  },
+  betty(): void {
+    for (let i = 0; i < 3; i++) {
+      tone(180, 0.06, 'square', 0.12, 90, i * 0.05);
+      burst(0.05, 0.4, 900, 1, i * 0.05);
+    }
+    tone(700, 0.25, 'square', 0.05, 350, 0.18); // "voz" de computadora vieja
+  },
+  ding(): void {
+    tone(1568, 0.5, 'sine', 0.14);
+    tone(2093, 0.4, 'sine', 0.06, undefined, 0.01);
+  },
+  laugh(): void {
+    for (let i = 0; i < 4; i++) tone(520 - i * 30, 0.07, 'square', 0.06, 380, i * 0.1);
+  },
+  stamp(): void {
+    burst(0.15, 0.9, 200, 0.6);
+    tone(90, 0.2, 'square', 0.15, 50);
+  },
+  engine(): void {
+    for (let i = 0; i < 6; i++) tone(70 + (i % 2) * 15, 0.1, 'sawtooth', 0.08, undefined, i * 0.1);
+  },
+  /** La cargada de cada uno tiene su sonidito. */
+  taunt(who: string): void {
+    if (who === 'elSeba') {
+      // ¡HEEEY! Voz sintetizada: una vocal que sube.
+      tone(260, 0.5, 'sawtooth', 0.12, 420);
+      tone(520, 0.5, 'square', 0.04, 840);
+    } else if (who === 'elVikingo') {
+      // Riff chiptune en quinta.
+      [196, 196, 233, 262, 196].forEach((f, i) => {
+        tone(f, 0.12, 'square', 0.08, undefined, i * 0.12);
+        tone(f * 1.5, 0.12, 'square', 0.05, undefined, i * 0.12);
+      });
+    } else if (who === 'volpi' || who === 'elRosco') {
+      this.laugh();
+    } else if (who === 'trueTincho') {
+      burst(0.4, 0.2, 700, 3); // sorbo de mate
+    } else {
+      // Llave inglesa: clanc clanc.
+      tone(1400, 0.05, 'square', 0.08, undefined, 0);
+      tone(1250, 0.05, 'square', 0.08, undefined, 0.15);
+    }
+  },
 };

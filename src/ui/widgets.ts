@@ -51,7 +51,7 @@ export class Bubble {
     const w = Math.max(...lines.map((l) => measure(l))) + 8;
     const h = lines.length * 12 + 4;
     let x = Math.round(ax - 10);
-    const y = Math.round(above ? ay - h - 6 : ay + 6);
+    const y = Phaser.Math.Clamp(Math.round(above ? ay - h - 6 : ay + 6), 2, 360 - h - 2);
     x = Phaser.Math.Clamp(x, 2, 640 - w - 2);
     const g = this.g;
     g.clear();

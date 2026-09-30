@@ -16,6 +16,8 @@ export class SpritePlayerView implements PlayerView {
   private label: Phaser.GameObjects.BitmapText | null;
   private tex: CharacterTextures;
   private key: string;
+  /** Oculto (por ejemplo, arriba de la minicargadora). */
+  hidden = false;
 
   constructor(scene: Phaser.Scene, side: 0 | 1, tex: CharacterTextures, label: Phaser.GameObjects.BitmapText | null) {
     this.tex = tex;
@@ -80,17 +82,28 @@ export class SpritePlayerView implements PlayerView {
         flip = p.side === 0 ? dir < 0 : dir > 0;
         break;
       }
-      case 'celebrate':
+      case 'taunt':
         frame = this.loop('taunt', t);
+        break;
+      case 'celebrate':
+        // Festejo corto: salta con la raqueta arriba (la cargada propia es con la V).
+        frame = t < 0.9 ? this.loop('taunt', t) : this.loop('idle', t);
         break;
       case 'lament':
         frame = this.loop('lament', t);
         break;
+      case 'hurt':
+        frame = this.loop('hurt', t);
+        break;
+      case 'burn':
+        // Soplándose las manos: alterna rápido los cuadros de lamento.
+        frame = this.frame('lament', Math.floor(t * 10) % 2);
+        break;
       default:
         frame = this.loop('idle', t);
     }
-    this.sprite.setFrame(frame).setFlipX(flip).setPosition(x, y).setDepth(y);
-    this.shadow.setPosition(x, y).setDepth(y - 0.5);
+    this.sprite.setFrame(frame).setFlipX(flip).setPosition(x, y).setDepth(y).setVisible(!this.hidden);
+    this.shadow.setPosition(x, y).setDepth(y - 0.5).setVisible(!this.hidden);
     if (this.label) this.label.setPosition(Math.round(x - this.label.width / 2), y - 58).setDepth(5000);
   }
 

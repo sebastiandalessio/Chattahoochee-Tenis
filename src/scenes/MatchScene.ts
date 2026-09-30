@@ -7,6 +7,7 @@ import { createRng } from '../logic/rng';
 import { describeScore, other, pointLabel, type ScoreEvent, type Side } from '../logic/scoring';
 import { keyboard, KEYMAP_1P, KEYMAP_2P_A, KEYMAP_2P_B } from '../input/keyboard';
 import { CpuBrain } from '../sim/ai';
+import { personalityFor } from '../sim/personalities';
 import { emptyInput, type PlayerInput } from '../sim/input';
 import { Match, type MatchEvent, type PlayerSim } from '../sim/match';
 import { pick, T } from '../texts/es';
@@ -14,7 +15,9 @@ import { sfx } from '../audio/sfx';
 import { project, scaleAt } from '../game/projection';
 import type { PlayerView } from '../game/playerView';
 import { SpritePlayerView } from '../game/spritePlayerView';
-import { ensureCharacterTextures } from '../game/spriteTextures';
+import { ensureCharacterTextures, type CharacterTextures } from '../game/spriteTextures';
+import { MystiqueFx } from '../game/mystiqueFx';
+import { RULES } from '../sim/rules';
 import { CHARACTERS, type CharacterId } from '../game/characters';
 import { DEFAULT_SETUP, difficultyParams, resolveChars, surfaceOf, type MatchSetup } from '../game/setup';
 import { drawCourtCanvas, drawNetCanvas, addCanvasTexture, GREY_THEME } from '../game/textures';
@@ -65,6 +68,8 @@ export class MatchScene extends Phaser.Scene {
   private commentary!: Commentary;
   private umpirePos = { x: 0, y: 0 };
   private names: [string, string] = ['', ''];
+  private chars: [CharacterId, CharacterId] = ['elRosco', 'elSeba'];
+  private fx!: MystiqueFx;
   private lastScoreCallPending = false;
 
   constructor() {
@@ -96,12 +101,14 @@ export class MatchScene extends Phaser.Scene {
     const outfits: [number, number] = [0, chars[0] === chars[1] ? 1 : 0];
     this.names = [T.characters[chars[0]].name, T.characters[chars[1]].name];
 
-    const setupFor = (human: boolean, id: CharacterId) => ({
+    const personalities = [personalityFor(chars[0], diff.ai), personalityFor(chars[1], diff.ai)];
+    const setupFor = (human: boolean, id: CharacterId, side: Side) => ({
       stats: CHARACTERS[id].stats,
       short: CHARACTERS[id].short,
       slowStart: CHARACTERS[id].slowStart,
+      charId: id,
       human,
-      errorMul: human ? 1 : diff.cpuErrorMul,
+      errorMul: human ? 1 : diff.cpuErrorMul * personalities[side].errorMul,
       assist: human ? diff.humanAssist : 0,
       serveMeterHalfPeriod: human ? diff.humanMeterHalf : 0.42,
     });
@@ -109,13 +116,16 @@ export class MatchScene extends Phaser.Scene {
       rules: { gamesPerSet: s.games },
       surface: surfaceOf(s),
       players: [
-        { name: this.names[0], ...setupFor(human0, chars[0]) },
-        { name: this.names[1], ...setupFor(human1, chars[1]) },
+        { name: this.names[0], ...setupFor(human0, chars[0], 0) },
+        { name: this.names[1], ...setupFor(human1, chars[1], 1) },
       ],
       seed,
       firstServer: seed % 2 === 0 ? 0 : 1,
     });
-    this.brains = [human0 ? null : new CpuBrain(0, diff.ai, rng), human1 ? null : new CpuBrain(1, diff.ai, rng)];
+    this.brains = [
+      human0 ? null : new CpuBrain(0, personalities[0], rng),
+      human1 ? null : new CpuBrain(1, personalities[1], rng),
+    ];
 
     // Cancha.
     addCanvasTexture(this, 'court', drawCourtCanvas(GREY_THEME));
@@ -132,12 +142,15 @@ export class MatchScene extends Phaser.Scene {
     this.umpirePos = { x: Math.round(chair.sx) + 2, y: Math.round(chair.sy) - 30 };
 
     // Jugadores (en 2P, una etiqueta chiquita para saber quién es quién).
+    const texs: CharacterTextures[] = [];
     for (const side of [0, 1] as Side[]) {
       const tag = s.mode === '2p' ? (side === 0 ? 'J1' : 'J2') : '';
       const label = tag ? pxText(this, 0, 0, tag, { outline: true, color: side === 0 ? UI.cyan : UI.red }) : null;
       const tex = ensureCharacterTextures(this, chars[side], outfits[side]);
+      texs.push(tex);
       this.views.push(new SpritePlayerView(this, side, tex, label));
     }
+    this.chars = chars;
 
     // Pelota.
     this.ballShadow = this.add.image(0, 0, 'shadow').setAlpha(0.4);
@@ -148,6 +161,15 @@ export class MatchScene extends Phaser.Scene {
     this.bubble = new Bubble(this);
     this.commentary = new Commentary(this);
     fullscreenButton(this);
+    this.fx = new MystiqueFx(this, this.match, {
+      chars,
+      views: this.views,
+      textures: [texs[0], texs[1]],
+      humans: [human0, human1],
+      twoPlayers: s.mode === '2p',
+      say: (t, ms) => this.say(t, ms),
+      call: (t, ms) => this.call(t, ms),
+    });
 
     keyboard.install();
     (window as unknown as { __cht: unknown }).__cht = { scene: this, match: this.match };
@@ -241,7 +263,8 @@ export class MatchScene extends Phaser.Scene {
       if (this.freeze > 0) {
         this.freeze -= dt;
       } else {
-        this.acc += dt * (this.setup.speed ?? 1);
+        // El Paralelo Académico va en cámara lenta, como la repetición de la TV.
+        this.acc += dt * (this.setup.speed ?? 1) * (this.match.slowMo ? 0.35 : 1);
         let steps = 0;
         while (this.acc >= STEP && steps < 60) {
           this.acc -= STEP;
@@ -256,8 +279,9 @@ export class MatchScene extends Phaser.Scene {
         }
       }
       this.updateParticles(dt);
+      this.fx.update(dt);
     }
-    this.render();
+    this.render(dt);
     keyboard.endFrame();
   }
 
@@ -302,6 +326,12 @@ export class MatchScene extends Phaser.Scene {
   private handleEvents(events: MatchEvent[]): void {
     const m = this.match;
     for (const e of events) {
+      // Mística: el módulo de efectos puede pedir congelar el partido (cut-in de especial).
+      const freeze = this.fx?.onEvent(e) ?? 0;
+      if (freeze > 0) {
+        this.freeze = Math.max(this.freeze, freeze);
+        this.acc = 0;
+      }
       switch (e.type) {
         case 'pointStart':
           if (this.lastScoreCallPending) {
@@ -463,7 +493,7 @@ export class MatchScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ dibujo
 
-  private render(): void {
+  private render(dt: number): void {
     const m = this.match;
     for (let i = 0; i < 2; i++) this.views[i].update(m.players[i], m);
 
@@ -472,7 +502,7 @@ export class MatchScene extends Phaser.Scene {
     const air = project(b.x, b.y, b.z);
     const small = scaleAt(b.y) < 17;
     const inHand = m.phase === 'preServe';
-    this.ball.setTexture(small ? 'ballFar' : 'ballNear');
+    this.ball.setTexture(this.fx.ballTexture() ?? (small ? 'ballFar' : 'ballNear'));
     this.ball.setPosition(Math.round(air.sx), Math.round(air.sy) - 1).setDepth(ground.sy + 0.6);
     this.ball.setVisible(!inHand);
     this.ballShadow
@@ -499,6 +529,7 @@ export class MatchScene extends Phaser.Scene {
     } else this.net.setPosition(this.netBase.x, this.netBase.y);
 
     this.refreshHud();
+    this.fx.render(dt);
   }
 
   // ------------------------------------------------------------------ pausa y final
@@ -515,12 +546,25 @@ export class MatchScene extends Phaser.Scene {
     const opts = [T.pause.resume, T.pause.restart, T.pause.quit].map((txt, i) =>
       pxText(this, 320, 152 + i * 18, txt, { outline: true }).setOrigin(0.5, 0).setDepth(9951),
     );
-    this.pauseUi = [g, title, ...opts];
+    // Recetas de los dos, para saber qué falta para el especial.
+    drawBox(g, 110, 230, 420, 70, 0x191826, 0x3a3850);
+    const extra: Phaser.GameObjects.GameObject[] = [];
+    ([0, 1] as Side[]).forEach((side, row) => {
+      const who = this.chars[side];
+      const st = this.match.myst.states[side];
+      const steps = RULES[who].recipe
+        .map((id, i) => `${st.recipe[i] ? '✓' : '·'} ${T.steps[id]}`)
+        .join('   ');
+      const y = 236 + row * 32;
+      extra.push(pxText(this, 118, y, `${this.names[side]} — ${T.specials[RULES[who].special].name}`, { outline: true, color: UI.gold }).setDepth(9951));
+      extra.push(pxText(this, 118, y + 13, steps, {}).setDepth(9951));
+    });
+    this.pauseUi = [g, title, ...opts, ...extra];
     this.drawPauseSel();
   }
 
   private drawPauseSel(): void {
-    this.pauseUi.slice(2).forEach((o, i) => {
+    this.pauseUi.slice(2, 5).forEach((o, i) => {
       (o as Phaser.GameObjects.BitmapText).setTint(i === this.pauseSel ? UI.gold : UI.white);
     });
   }
@@ -556,11 +600,14 @@ export class MatchScene extends Phaser.Scene {
       [T.end.rows.whiffs, (p) => String(p.counters.whiffs)],
       [T.end.rows.distance, (p) => String(Math.round(p.counters.distance))],
       [T.end.rows.maxKmh, (p) => `${p.counters.maxKmh}`],
+      [T.end.rows.taunts, (p) => String(p.counters.taunts)],
+      [T.end.rows.specials, (p) => String(p.counters.specials)],
+      [T.end.rows.lumbar, (p) => String(p.counters.lumbar)],
     ];
     ui.push(pxText(this, 400, 122, this.names[0], { outline: true, color: UI.cyan }).setOrigin(0.5, 0).setDepth(9951));
     ui.push(pxText(this, 470, 122, this.names[1], { outline: true, color: UI.red }).setOrigin(0.5, 0).setDepth(9951));
     rows.forEach(([label, f], i) => {
-      const y = 138 + i * 14;
+      const y = 136 + i * 12;
       ui.push(pxText(this, 136, y, label, {}).setDepth(9951));
       ui.push(pxText(this, 400, y, f(m.players[0]), { color: UI.gold }).setOrigin(0.5, 0).setDepth(9951));
       ui.push(pxText(this, 470, y, f(m.players[1]), { color: UI.gold }).setOrigin(0.5, 0).setDepth(9951));
