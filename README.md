@@ -10,7 +10,7 @@ Un videojuego de tenis pixel art sobre los partidos amateur de los Chattahoochee
 
 También se puede bajar el juego entero en un solo archivo: [Chattahoochee-Tenis.html](https://sebastiandalessio.github.io/Chattahoochee-Tenis/Chattahoochee-Tenis.html) (se abre con doble clic en Chrome o Edge).
 
-> Estado: **hito 3** — los seis Chattahoochees con su mística: recetas, especiales (¡Rey de Copas!, ¡HEEEY!, Paralelo Académico, ¡Dale, Betty!, Pelota Frita, Minicargadora), pasivas, debilidades, cargadas y una CPU con la personalidad de cada uno. Las sedes y la torre llegan en los próximos hitos.
+> Estado: **hito 4** — los seis Chattahoochees con su mística (recetas, especiales, pasivas, debilidades, cargadas y CPU con personalidad) en cuatro sedes: Breckenridge, Spring Ridge, St. Regis y la orilla del Chattahoochee, con sus eventos (pelotas de fútbol, ardillas, bombas en la pileta, pickleball...) y Don Ganso de umpire. La torre, el Boss y los finales llegan en el hito 5.
 
 ## Controles
 

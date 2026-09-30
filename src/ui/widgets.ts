@@ -82,6 +82,12 @@ export class Bubble {
     this.g.setVisible(false);
     this.t.setVisible(false);
   }
+
+  destroy(): void {
+    this.timer?.remove();
+    this.g.destroy();
+    this.t.destroy();
+  }
 }
 
 /** Cartel grande en el centro de la pantalla. */

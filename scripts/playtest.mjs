@@ -72,6 +72,60 @@ try {
     console.log('  corre:', s ? `sí (fase ${s.phase}, t=${s.time.toFixed(1)}s)` : 'NO');
   }
 
+  // ------------------------------------------------------------ sedes y eventos (npm run playtest -- sedes)
+  if (which === 'sedes') {
+    const only = process.argv[3];
+    const plan = [
+      ['breckenridge', ['pelota', 'silbato', 'bomba', 'gansoDuerme']],
+      ['springRidge', ['ardilla', 'pina', 'polen', 'ciervo', 'entrenador']],
+      ['stRegis', ['pickleball', 'pregunta', 'mozo', 'gansoRoba']],
+      ['chattahoochee', ['pelota']],
+    ];
+    for (const [venue, evs] of plan) {
+      if (only && only !== venue) continue;
+      console.log('Sede', venue);
+      await page.goto(`${base}?demo=1&venue=${venue}&games=6&seed=11&speed=1`);
+      await sleep(3500);
+      await shot(`sede-${venue}`);
+      for (const ev of evs) {
+        // Fuerza el evento en el próximo punto y espera a que aparezca (los de peloteo pueden
+        // no llegar a salir si el punto termina antes: se reintenta).
+        let seen = null;
+        for (let attempt = 0; attempt < 4 && !seen; attempt++) {
+          await page.evaluate((id) => {
+            window.__cht.match.venueEv.force = id;
+            window.__evWant = id;
+            window.__evSeen = null;
+            const m = window.__cht.match;
+            if (!m.__hooked) {
+              m.__hooked = true;
+              const orig = m.emit.bind(m);
+              m.emit = (e) => {
+                if (e.type === 'venue' && e.id === window.__evWant) window.__evSeen = e.id + ':' + e.stage;
+                return orig(e);
+              };
+            }
+          }, ev);
+          const t0 = Date.now();
+          while (Date.now() - t0 < 12000) {
+            seen = await page.evaluate(() => window.__evSeen);
+            if (seen) break;
+            await sleep(50);
+          }
+        }
+        const wait = { pelota: 350, ardilla: 450, silbato: 250, bomba: 500, pina: 500, polen: 700, ciervo: 3500, entrenador: 300, pickleball: 700, mozo: 3000, pregunta: 2600, gansoDuerme: 1200, gansoRoba: 300 }[ev] ?? 400;
+        await sleep(wait);
+        await shot(`sede-${venue}-${ev}`);
+        if (ev === 'pregunta') {
+          await sleep(3000);
+          await shot(`sede-${venue}-${ev}-2`);
+        }
+        console.log('  evento', ev, seen ? 'visto' : 'NO APARECIÓ');
+        await sleep(600);
+      }
+    }
+  }
+
   // ------------------------------------------------------------ pantalla final: Enter y Esc
   if (which === 'all' || which === 'end') {
     console.log('Pantalla final (Enter = otro partido, Esc = menú)');

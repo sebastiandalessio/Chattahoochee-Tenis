@@ -16,6 +16,25 @@ mkdirSync(outDir, { recursive: true });
 const server = await createServer({ root, logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 try {
   const mod = await server.ssrLoadModule('/src/art/sheets.ts');
+  if (process.argv.includes('--venues')) {
+    // Las cuatro sedes pintadas (fondo + capa de luz), x2, para revisar.
+    const v = await server.ssrLoadModule('/src/art/venueArt.ts');
+    const pdir = path.join(root, 'playtest', 'sprites');
+    mkdirSync(pdir, { recursive: true });
+    for (const id of ['breckenridge', 'springRidge', 'stRegis', 'chattahoochee']) {
+      const t0 = Date.now();
+      const { background, overlay } = v.paintVenue(id);
+      const out = new Uint8ClampedArray(background.data);
+      if (overlay) {
+        for (let i = 0; i < out.length; i += 4) {
+          const a = overlay.data[i + 3] / 255;
+          for (let c = 0; c < 3; c++) out[i + c] = Math.round(out[i + c] * (1 - a) + overlay.data[i + c] * a);
+        }
+      }
+      writeFileSync(path.join(pdir, `sede_${id}.png`), encodePNG(background.w, background.h, out, 2));
+      console.log(`playtest/sprites/sede_${id}.png (${Date.now() - t0} ms)`);
+    }
+  }
   if (process.argv.includes('--objects')) {
     // Lámina de objetos (Betty, Mabel, minicargadora...) ampliada x6, para revisar.
     const o = await server.ssrLoadModule('/src/art/objects.ts');

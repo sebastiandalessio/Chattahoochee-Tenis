@@ -6,6 +6,7 @@ import { ANIM_ORDER, FRAME_H, FRAME_W } from '../art/body';
 import { CHARACTER_ARTS, buildPortraits, buildSheet, layoutFor, portraitKey, sheetKey } from '../art/sheets';
 import { imageToCanvas } from './textures';
 import type { CharacterId } from './characters';
+import type { CharacterArt, Outfit } from '../art/characters/types';
 
 // Los PNG de reemplazo se empaquetan con el juego (en el archivo único quedan embebidos).
 const OVERRIDES = import.meta.glob('/public/sprites/override/*.png', {
@@ -51,10 +52,7 @@ export interface CharacterTextures {
   frames: Record<string, number>;
 }
 
-/** Genera (una sola vez) las hojas de un personaje con un traje. Frames: "<anim>_<n>". */
-export function ensureCharacterTextures(scene: Phaser.Scene, id: CharacterId, outfitIndex = 0): CharacterTextures {
-  const art = CHARACTER_ARTS[id];
-  const outfit = art.outfits[Math.min(outfitIndex, art.outfits.length - 1)];
+function frameListFor(art: CharacterArt) {
   const layout = layoutFor(art);
   const frameList: { name: string; x: number; y: number; w: number; h: number }[] = [];
   const counts: Record<string, number> = {};
@@ -63,6 +61,26 @@ export function ensureCharacterTextures(scene: Phaser.Scene, id: CharacterId, ou
     counts[anim] = n;
     for (let i = 0; i < n; i++) frameList.push({ name: `${anim}_${i}`, x: i * FRAME_W, y: row * FRAME_H, w: FRAME_W, h: FRAME_H });
   });
+  return { frameList, counts };
+}
+
+/** Hojas (de espaldas y de frente) de cualquier figura: personajes o extras. */
+export function ensureArtSheets(scene: Phaser.Scene, key: string, art: CharacterArt, outfit: Outfit): { back: string; front: string; frames: Record<string, number> } {
+  const { frameList, counts } = frameListFor(art);
+  const keys = { back: `${key}_back`, front: `${key}_front` };
+  for (const view of ['back', 'front'] as const) {
+    if (scene.textures.exists(keys[view])) continue;
+    const tex = useSource(scene, keys[view], () => imageToCanvas(buildSheet(art, outfit, view)));
+    addFrames(tex, frameList);
+  }
+  return { ...keys, frames: counts };
+}
+
+/** Genera (una sola vez) las hojas de un personaje con un traje. Frames: "<anim>_<n>". */
+export function ensureCharacterTextures(scene: Phaser.Scene, id: CharacterId, outfitIndex = 0): CharacterTextures {
+  const art = CHARACTER_ARTS[id];
+  const outfit = art.outfits[Math.min(outfitIndex, art.outfits.length - 1)];
+  const { frameList, counts } = frameListFor(art);
   const keys = {
     back: sheetKey(id, outfit.id, 'back'),
     front: sheetKey(id, outfit.id, 'front'),

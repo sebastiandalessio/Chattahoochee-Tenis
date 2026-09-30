@@ -36,6 +36,26 @@ export class Painter {
     d[k + 3] = 255;
   }
 
+  /** Mezcla un color con lo que ya hay (transparencias: alambrados, luz, reflejos). */
+  blend(x: number, y: number, hex: string, alpha: number): void {
+    x = Math.floor(x);
+    y = Math.floor(y);
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    const k = (y * this.w + x) * 4;
+    const d = this.img.data;
+    const [r, g, b] = hexToRgb(hex);
+    if (d[k + 3] === 0) {
+      d[k] = r;
+      d[k + 1] = g;
+      d[k + 2] = b;
+      d[k + 3] = Math.round(alpha * 255);
+      return;
+    }
+    d[k] = Math.round(d[k] + (r - d[k]) * alpha);
+    d[k + 1] = Math.round(d[k + 1] + (g - d[k + 1]) * alpha);
+    d[k + 2] = Math.round(d[k + 2] + (b - d[k + 2]) * alpha);
+  }
+
   clear(x: number, y: number): void {
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
     this.img.data[(y * this.w + x) * 4 + 3] = 0;

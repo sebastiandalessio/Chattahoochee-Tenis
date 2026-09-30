@@ -114,6 +114,20 @@ export class Rally {
     return { type: 'point', winner: hitter, reason: this.isServe ? 'ace' : 'winner' };
   }
 
+  /**
+   * La pelota pegó en el alambrado (St. Regis). Sin haber picado: afuera. Después de un pique
+   * bueno: el rival no llegó, punto de quien pegó.
+   */
+  onFence(): Decision {
+    if (this.decided || this.lastHitter === null) return { type: 'continue' };
+    this.decided = true;
+    if (this.bouncesSinceHit === 0) {
+      if (this.isServe) return { type: 'fault', reason: 'long' };
+      return { type: 'point', winner: other(this.lastHitter), reason: 'out', out: 'long' };
+    }
+    return { type: 'point', winner: this.lastHitter, reason: this.isServe ? 'ace' : 'winner' };
+  }
+
   /** La pelota quedó rodando (se murió): equivale al segundo pique. */
   onDead(): Decision {
     if (this.decided || this.lastHitter === null) return { type: 'continue' };

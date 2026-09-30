@@ -7,15 +7,14 @@ export const T = {
   // ---------------------------------------------------------------- menú de prueba (hito 1)
   testMenu: {
     heading: 'PARTIDO DE PRUEBA',
-    sub: 'Hito 2: ya tenemos cara. Y barba. Y anteojos.',
+    sub: 'Hito 4: con mística, especiales, sedes y un ganso de umpire.',
     mode: 'Modo',
     modes: ['Vos contra la CPU', '2 jugadores', 'CPU contra CPU (mirar)'],
     length: 'Duración',
     lengths: ['2 games (rápido)', '4 games', '6 games (set completo)'],
     difficulty: 'Dificultad',
     difficulties: ['Fácil', 'Normal', 'Nivel Chattahoochee'],
-    surface: 'Superficie',
-    surfaces: ['Cemento', 'Polvo verde', 'Cemento rápido'],
+    venue: 'Sede',
     bottom: 'Abajo (vos)',
     bottom2P: 'Abajo (J1)',
     bottomDemo: 'Abajo (CPU)',
@@ -238,6 +237,7 @@ export const T = {
     confused: '¿Y esto qué es?',
     burn: '¡Quema! ¡Quema!',
     noChase: 'No, esa no.',
+    slip: '¡Uy, resbala!',
     ding: '¡DING!',
   } as Record<string, string>,
   /** Lo que grita cada uno al hacer la cargada. */
@@ -272,6 +272,75 @@ export const T = {
     ready: 'Receta completa. Hay mística.',
   },
   obraSign: 'ZONA EN OBRA',
+
+  // ---------------------------------------------------------------- sedes
+  venues: {
+    names: {
+      breckenridge: 'BRECKENRIDGE',
+      springRidge: 'SPRING RIDGE',
+      stRegis: 'ST. REGIS',
+      chattahoochee: 'ORILLAS DEL CHATTAHOOCHEE',
+    } as Record<string, string>,
+    blurbs: {
+      breckenridge: 'Cemento verde y azul. Pileta, playground y una cancha vecina muy tranquila.',
+      springRidge: 'Polvo verde entre pinos. La pelota pica alta y los jugadores se deslizan.',
+      stRegis: 'Country club. Cemento azul rapidísimo, poco lugar atrás y pickleball al lado.',
+      chattahoochee: 'La sede secreta: atardecer, río, gansos y musgo.',
+    } as Record<string, string>,
+    random: 'Sorteo',
+    windscreen: 'ST. REGIS',
+    fence: ['¡Contra el alambrado!', 'El alambrado de St. Regis devuelve más que algunos.'],
+    slip: '¡Uy, resbala!',
+    poc: 'POC',
+    sneeze: '¡ACHÍS!',
+    zzz: 'Zzz...',
+    wake: '¡HONK! ¿Qué me perdí?',
+    events: {
+      pelota: {
+        call: '¡PELOTA!',
+        say: ['Pelota de fútbol del playground. Se repite el punto.', 'Un pibe quiere su pelota de vuelta. Se repite.'],
+      },
+      silbato: {
+        bubble: '¡PRIIIIIT!',
+        say: ['Pitó el guardavidas. Nadie sabe por qué. Todos se congelaron.', '¡PRIIIT! Era el guardavidas. Sigan, sigan.'],
+      },
+      bomba: {
+        bubble: '¡BOMBAAAA!',
+        say: ['¡Bomba en la pileta! La cancha quedó mojada: cuidado con el charco.', 'Salpicadura olímpica. Hay charco.'],
+      },
+      ardilla: {
+        call: '¡ARDILLA!',
+        say: ['Una ardilla se robó la pelota. Se repite el punto.', 'La ardilla no pidió permiso. Se repite.'],
+      },
+      pina: { say: ['Cayó una piña en la cancha. Pique a la suerte.', 'Piña de pino, cortesía de Georgia.'] },
+      polen: { say: ['Nube de polen de Atlanta. No se ve nada. ¡Achís!', 'Temporada de polen: todo amarillo, todos estornudan.'] },
+      ciervo: { say: ['Pasa un ciervo. Mira el partido con desdén. Sigue de largo.', 'El ciervo vio tu revés y se fue.'] },
+      entrenador: {
+        bubbles: ['¡AFUERA! ¡Del agua, digo!', '¡VAMOS ESA BRAZADA!', '¡VUELTA!', '¡PIERNAS, PIERNAS!'],
+        say: ['Eso lo gritó el entrenador de natación. No cuenta.', 'El entrenador de natación también tiene opiniones.'],
+      },
+      pickleball: { say: ['¡Una bola de pickleball! Esquivala.', 'Invasión de pickleball. POC.'], hit: ['Tropezó con una bola de pickleball. POC.'] },
+      mozo: { say: ['Un mozo cruza con limonadas. Nadie pidió. Todos quieren.', 'Pasa el mozo. Don Ganso pide una sin azúcar.'] },
+      gansoDuerme: { say: ['Don Ganso se durmió. Este punto lo cantan ustedes.'] },
+      gansoRoba: { say: ['Don Ganso se robó una pelota. Dice que es para su colección.', 'Don Ganso confiscó la pelota. Sin explicaciones.'] },
+      pregunta: {
+        ask: '¿Nos prestan la cancha cuando terminen?',
+        options: [
+          'Sí, cuando terminemos. Calculá tres horas y un tie-break.',
+          '¿Pickleball? ¿Eso no es tenis para gente que perdió la raqueta grande?',
+          'Solo si me explicás las reglas.',
+          'POC.',
+        ],
+        answers: [
+          '¡Genial! Traemos reposeras y nos quedamos mirando.',
+          'Se ofendió. Te mira como el ciervo de Spring Ridge.',
+          'La "cocina" es la zona sin volea, el saque va de abajo... (veinte minutos después)... ¿me seguís?',
+          '...POC. (Se va, conmovido.)',
+        ],
+        comment: ['Diplomacia deportiva. Anotado en el acta.', 'Don Ganso aprueba esa respuesta. Más o menos.'],
+      },
+    },
+  },
 
   // ---------------------------------------------------------------- pausa y fin
   pause: {

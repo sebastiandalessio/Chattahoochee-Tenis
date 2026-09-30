@@ -32,6 +32,8 @@ import { physiqueOf, type Physique, type Stats } from '../logic/stats';
 import { edgesOf, emptyInput, type InputEdges, type PlayerInput } from './input';
 import { Mystique } from './mystique';
 import { SHOT_SPECIALS, type SpecialId, type StepId } from './rules';
+import { VenueEvents } from './venueEvents';
+import { VENUES, type VenueDef, type VenueEventId, type VenueId } from './venues';
 
 // Zona de golpe, en metros, relativa al jugador. d > 0 = la pelota está delante (hacia la red).
 export const ZONE = {
@@ -64,7 +66,7 @@ export type AnimName =
   | 'hurt'
   | 'burn';
 
-export type EmoteKey = '?' | 'lumbar' | 'apurado' | 'jaja' | 'poker' | 'tentado' | 'confused' | 'burn' | 'noChase';
+export type EmoteKey = '?' | 'lumbar' | 'apurado' | 'jaja' | 'poker' | 'tentado' | 'confused' | 'burn' | 'noChase' | 'slip';
 
 export interface PlayerSetup {
   name: string;
@@ -84,10 +86,14 @@ export interface PlayerSetup {
 
 export interface MatchConfig {
   rules?: Partial<MatchRules>;
+  /** Sede (superficie, alambrado, eventos). Sin sede: cancha neutra sin eventos. */
+  venue?: VenueId;
   surface?: Surface;
   players: [PlayerSetup, PlayerSetup];
   seed?: number;
   firstServer?: Side;
+  /** Eventos de la sede (pelota de fútbol, ardilla, etc.). Por defecto, prendidos. */
+  venueEvents?: boolean;
 }
 
 export interface PlayerCounters {
@@ -108,7 +114,8 @@ export interface PlayerCounters {
 }
 
 export type MatchEvent =
-  | { type: 'pointStart'; server: Side; serveSide: 'deuce' | 'ad'; attempt: 1 | 2 }
+  /** fresh = punto nuevo (false en el segundo saque o después de un let: sigue el mismo punto). */
+  | { type: 'pointStart'; server: Side; serveSide: 'deuce' | 'ad'; attempt: 1 | 2; fresh: boolean }
   | { type: 'toss'; side: Side }
   | { type: 'retoss'; side: Side }
   | { type: 'serve'; side: Side; kmh: number; power: number }
@@ -156,7 +163,11 @@ export type MatchEvent =
   | { type: 'burn'; side: Side }
   | { type: 'ghostPuff'; x: number; y: number }
   | { type: 'obra'; side: Side; x: number; y: number; r: number }
-  | { type: 'obraBounce'; x: number; y: number };
+  | { type: 'obraBounce'; x: number; y: number }
+  // Sedes
+  | { type: 'venue'; id: VenueEventId; stage: 'start' | 'hit'; x?: number; y?: number; side?: Side }
+  | { type: 'replay'; reason: string }
+  | { type: 'fence'; x: number; y: number };
 
 interface Prep {
   button: 'hit' | 'slice';
@@ -183,6 +194,8 @@ export interface PlayerMods {
   tauntedThisDead: boolean;
   netT: number;
   confusedShown: boolean;
+  /** Ya avisó que resbaló en el charco este punto. */
+  slipShown: boolean;
 }
 
 export class PlayerSim {
@@ -222,6 +235,7 @@ export class PlayerSim {
     tauntedThisDead: false,
     netT: 0,
     confusedShown: false,
+    slipShown: false,
   };
   counters: PlayerCounters = {
     pointsWon: 0,
@@ -297,6 +311,9 @@ export class Match {
   readonly surface: Surface;
   readonly players: [PlayerSim, PlayerSim];
   readonly myst: Mystique;
+  readonly venue: VenueDef | null;
+  readonly venueEv: VenueEvents;
+  eventsEnabled: boolean;
   score: MatchScore;
   ball: Ball = makeBall();
   phase: Phase = 'preServe';
@@ -332,9 +349,12 @@ export class Match {
 
   constructor(cfg: MatchConfig) {
     this.rng = createRng(cfg.seed ?? Date.now());
-    this.surface = cfg.surface ?? SURFACES.hard;
+    this.venue = cfg.venue ? VENUES[cfg.venue] : null;
+    this.surface = cfg.surface ?? this.venue?.surface ?? SURFACES.hard;
+    this.eventsEnabled = cfg.venueEvents ?? true;
     this.players = [new PlayerSim(0, cfg.players[0]), new PlayerSim(1, cfg.players[1])];
     this.myst = new Mystique(this);
+    this.venueEv = new VenueEvents(this, this.venue);
     this.score = newMatch(cfg.rules ?? {}, cfg.firstServer ?? 0);
     this.rally = new Rally(this.score.server, serveSide(this.score));
     this.setupPoint();
@@ -369,7 +389,7 @@ export class Match {
 
   // ------------------------------------------------------------------ puntos
 
-  private setupPoint(): void {
+  private setupPoint(fresh = true): void {
     const side = serveSide(this.score);
     this.rally = new Rally(this.score.server, side);
     this.pending = null;
@@ -405,7 +425,11 @@ export class Match {
     }
     this.placeBallInHand();
     this.myst.onPointStart();
-    this.push({ type: 'pointStart', server: this.rally.server, serveSide: side, attempt: this.attempt });
+    for (const p of this.players) p.mods.slipShown = false;
+    this.push({ type: 'pointStart', server: this.rally.server, serveSide: side, attempt: this.attempt, fresh });
+    // Después del pointStart, así la escena primero limpia lo del punto anterior y después
+    // dibuja lo que trae este (charco, piña, polen...).
+    this.venueEv.onPointStart(fresh);
   }
 
   private placeBallInHand(): void {
@@ -453,6 +477,36 @@ export class Match {
         break;
     }
     this.stepGhosts(dt);
+    this.venueEv.step(dt);
+  }
+
+  /** Algo de la sede interrumpió el punto (pelota de fútbol, ardilla): se repite. */
+  forceReplay(reason: string): void {
+    if (this.phase !== 'rally' || this.rally.decided) return;
+    this.rally.decided = true;
+    this.phase = 'dead';
+    this.phaseT = 0;
+    this.pending = { kind: 'replay' };
+    for (const p of this.players) {
+      p.prep = null;
+      p.sliceWindow = null;
+      p.mods.pointBuff = null;
+    }
+    this.ghosts = [];
+    this.push({ type: 'replay', reason });
+  }
+
+  /** St. Regis: el alambrado está cerca del fondo y la pelota rebota. */
+  private checkFence(rules: boolean): void {
+    const fy = this.venue?.fenceY;
+    const b = this.ball;
+    if (!fy || Math.abs(b.y) <= fy) return;
+    b.y = Math.sign(b.y) * fy;
+    b.vy = -b.vy * 0.35;
+    b.vx *= 0.7;
+    b.vz *= 0.5;
+    this.push({ type: 'fence', x: b.x, y: b.y });
+    if (rules) this.handleDecision(this.rally.onFence());
   }
 
   private stepPreServe(dt: number, edges: InputEdges[]): void {
@@ -557,6 +611,7 @@ export class Match {
       if (e.type === 'bounce') this.push({ type: 'bounce', x: e.x, y: e.y, speed: e.speed, inPlay: false });
       else if (e.type === 'net') this.push({ type: 'net', x: e.x });
     }
+    this.checkFence(false);
   }
 
   private stepGhosts(dt: number): void {
@@ -595,6 +650,7 @@ export class Match {
         this.push({ type: 'netCord', x: e.x });
       }
     }
+    if (this.phase === 'rally') this.checkFence(true);
     if (this.ball.rolling) this.handleDecision(this.rally.onDead());
     if (this.phase === 'rally' && this.timeSinceHit > 8 && this.rally.lastHitter !== null) {
       // Red de seguridad: si la pelota se trabó en algún lado, el punto es de quien no pegó.
@@ -620,6 +676,20 @@ export class Match {
       b.vy = -b.vy * 0.8;
       b.vx *= 0.4;
       b.vz = Math.min(b.vz, 1.4);
+    }
+    // Sedes: el musgo del Boss frena la pelota; la piña la desvía.
+    const zone = this.venueEv.bounceZone(x, y);
+    if (zone === 'moss') {
+      b.vz *= 0.55;
+      b.vx *= 0.7;
+      b.vy *= 0.7;
+    } else if (zone === 'pina') {
+      const sp = Math.hypot(b.vx, b.vy);
+      const ang = Math.atan2(b.vy, b.vx) + this.rng.range(-1.4, 1.4);
+      b.vx = Math.cos(ang) * sp;
+      b.vy = Math.sin(ang) * sp;
+      b.vz *= this.rng.range(0.6, 1.6);
+      this.push({ type: 'venue', id: 'pina', stage: 'hit', x, y });
     }
     const o = this.obra;
     if (o && halfOf(y) === o.side && Math.hypot(x - o.x, y - o.y) < o.r) {
@@ -651,9 +721,9 @@ export class Match {
     if (!pend) return;
     if (pend.kind === 'fault') {
       this.attempt = 2;
-      this.setupPoint();
+      this.setupPoint(false);
     } else if (pend.kind === 'let') {
-      this.setupPoint();
+      this.setupPoint(false);
     } else if (pend.kind === 'replay') {
       this.attempt = 1;
       this.setupPoint();
@@ -1146,7 +1216,8 @@ export class Match {
 
   private clampToHalf(p: PlayerSim): void {
     p.x = clamp(p.x, -7.2, 7.2);
-    const back = COURT.halfLength + 3.6;
+    const fence = this.venue?.fenceY;
+    const back = fence ? fence - 0.5 : COURT.halfLength + 3.6;
     if (p.side === 0) p.y = clamp(p.y, 0.4, back);
     else p.y = clamp(p.y, -back, -0.4);
   }
@@ -1173,8 +1244,14 @@ export class Match {
     if (p.mods.lumbar) mul *= 0.6;
     const max = p.phys.maxSpeed * mul;
     const moving = len > 0.05;
-    const decel = 42 * (1 - this.surface.slide);
-    const a = moving ? p.phys.accel : decel;
+    // El charco de la bomba en la pileta: resbala.
+    const wet = this.venueEv.inPuddle(p.x, p.y);
+    const decel = 42 * (1 - this.surface.slide) * (wet ? 0.12 : 1);
+    const a = moving ? p.phys.accel * (wet ? 0.45 : 1) : decel;
+    if (wet && !p.mods.slipShown && Math.hypot(p.vx, p.vy) > 2.5) {
+      p.mods.slipShown = true;
+      this.push({ type: 'emote', side: p.side, text: 'slip' });
+    }
     p.vx = approach(p.vx, ix * max, a * dt);
     p.vy = approach(p.vy, iy * max, a * dt);
 

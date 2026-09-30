@@ -1,7 +1,6 @@
 // Escena del partido: corre la simulación a paso fijo y la dibuja.
 
 import Phaser from 'phaser';
-import { COURT } from '../logic/court';
 import { horizontalSpeed } from '../logic/physics';
 import { createRng } from '../logic/rng';
 import { describeScore, other, pointLabel, type ScoreEvent, type Side } from '../logic/scoring';
@@ -19,12 +18,27 @@ import { ensureCharacterTextures, type CharacterTextures } from '../game/spriteT
 import { MystiqueFx } from '../game/mystiqueFx';
 import { RULES } from '../sim/rules';
 import { CHARACTERS, type CharacterId } from '../game/characters';
-import { DEFAULT_SETUP, difficultyParams, resolveChars, surfaceOf, type MatchSetup } from '../game/setup';
-import { drawCourtCanvas, drawNetCanvas, addCanvasTexture, GREY_THEME } from '../game/textures';
-import { pxText } from '../ui/pixelFont';
+import { DEFAULT_SETUP, difficultyParams, resolveChars, resolveVenue, type MatchSetup } from '../game/setup';
+import { drawNetCanvas, addCanvasTexture } from '../game/textures';
+import { VenueFx } from '../game/venueFx';
+import { pxText, wrapText } from '../ui/pixelFont';
 import { Bubble, Commentary, UI, banner, drawBox, fullscreenButton } from '../ui/widgets';
 
 const STEP = 1 / 120;
+
+interface Dialog {
+  stage: 'arrive' | 'choose' | 'reply' | 'answer';
+  t: number;
+  sel: number;
+  /** En el modo demo elige solo. */
+  auto: boolean;
+  choice: number;
+  box: Phaser.GameObjects.GameObject[];
+  opts: Phaser.GameObjects.BitmapText[];
+  cursor: Phaser.GameObjects.BitmapText | null;
+  asker: Bubble;
+  me: Bubble;
+}
 
 interface Particle {
   img: Phaser.GameObjects.Image;
@@ -70,6 +84,9 @@ export class MatchScene extends Phaser.Scene {
   private names: [string, string] = ['', ''];
   private chars: [CharacterId, CharacterId] = ['elRosco', 'elSeba'];
   private fx!: MystiqueFx;
+  private venueFx!: VenueFx;
+  /** Diálogo de elección múltiple (el del pickleball): mientras está abierto, el partido espera. */
+  private dialog: Dialog | null = null;
   private lastScoreCallPending = false;
 
   constructor() {
@@ -87,6 +104,7 @@ export class MatchScene extends Phaser.Scene {
     this.trail = [];
     this.trailPos = [];
     this.views = [];
+    this.dialog = null;
   }
 
   create(): void {
@@ -112,9 +130,10 @@ export class MatchScene extends Phaser.Scene {
       assist: human ? diff.humanAssist : 0,
       serveMeterHalfPeriod: human ? diff.humanMeterHalf : 0.42,
     });
+    const venue = resolveVenue(s.venue, () => rng.next());
     this.match = new Match({
       rules: { gamesPerSet: s.games },
-      surface: surfaceOf(s),
+      venue,
       players: [
         { name: this.names[0], ...setupFor(human0, chars[0], 0) },
         { name: this.names[1], ...setupFor(human1, chars[1], 1) },
@@ -127,19 +146,16 @@ export class MatchScene extends Phaser.Scene {
       human1 ? null : new CpuBrain(1, personalities[1], rng),
     ];
 
-    // Cancha.
-    addCanvasTexture(this, 'court', drawCourtCanvas(GREY_THEME));
-    this.add.image(0, 0, 'court').setOrigin(0).setDepth(-10000);
+    // Sede: escenografía, Don Ganso en su silla y los extras.
+    this.venueFx = new VenueFx(this, this.match, venue, {
+      say: (t, ms) => this.say(t, ms),
+      call: (t, ms) => this.call(t, ms),
+    });
+    this.umpirePos = this.venueFx.umpireBubbleAt;
     const netArt = drawNetCanvas();
     addCanvasTexture(this, 'net', netArt.canvas);
     this.netBase = { x: netArt.x, y: netArt.y };
     this.net = this.add.image(netArt.x, netArt.y, 'net').setOrigin(0).setDepth(project(0, 0).sy);
-
-    // Silla del umpire con Don Ganso provisorio.
-    const chair = project(-COURT.netPostX - 1.1, 0);
-    this.add.image(Math.round(chair.sx), Math.round(chair.sy), 'silla').setOrigin(0.5, 1).setDepth(chair.sy);
-    this.add.image(Math.round(chair.sx), Math.round(chair.sy) - 14, 'ganso').setOrigin(0.5, 1).setDepth(chair.sy + 0.1);
-    this.umpirePos = { x: Math.round(chair.sx) + 2, y: Math.round(chair.sy) - 30 };
 
     // Jugadores (en 2P, una etiqueta chiquita para saber quién es quién).
     const texs: CharacterTextures[] = [];
@@ -237,7 +253,8 @@ export class MatchScene extends Phaser.Scene {
     // Medidor de saque junto a quien saca.
     const mg = h.meter;
     mg.clear();
-    if (m.phase === 'toss' || m.phase === 'preServe') {
+    // (Solo para humanos: al CPU no le hace falta y tapa la cancha.)
+    if ((m.phase === 'toss' || m.phase === 'preServe') && m.server.setup.human) {
       const srv = m.server;
       const pos = project(srv.x, srv.y);
       const x = Math.round(pos.sx) + srv.rightSign * 16 - 2;
@@ -257,10 +274,13 @@ export class MatchScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(deltaMs / 1000, 0.1);
-    this.handleGlobalKeys();
+    if (this.dialog && !this.paused) this.updateDialog(dt);
+    else this.handleGlobalKeys();
 
     if (!this.paused) {
-      if (this.freeze > 0) {
+      if (this.dialog) {
+        // Se charla: el partido espera.
+      } else if (this.freeze > 0) {
         this.freeze -= dt;
       } else {
         // El Paralelo Académico va en cámara lenta, como la repetición de la TV.
@@ -270,6 +290,7 @@ export class MatchScene extends Phaser.Scene {
           this.acc -= STEP;
           steps++;
           this.stepSim();
+          if (this.dialog) break;
           if (this.match.hitStop > 0) {
             this.freeze = this.match.hitStop / (this.setup.speed ?? 1);
             this.match.hitStop = 0;
@@ -280,6 +301,7 @@ export class MatchScene extends Phaser.Scene {
       }
       this.updateParticles(dt);
       this.fx.update(dt);
+      this.venueFx.update(dt);
     }
     this.render(dt);
     keyboard.endFrame();
@@ -328,6 +350,8 @@ export class MatchScene extends Phaser.Scene {
     for (const e of events) {
       // Mística: el módulo de efectos puede pedir congelar el partido (cut-in de especial).
       const freeze = this.fx?.onEvent(e) ?? 0;
+      this.venueFx?.onEvent(e);
+      if (e.type === 'venue' && e.id === 'pregunta') this.startDialog();
       if (freeze > 0) {
         this.freeze = Math.max(this.freeze, freeze);
         this.acc = 0;
@@ -336,7 +360,9 @@ export class MatchScene extends Phaser.Scene {
         case 'pointStart':
           if (this.lastScoreCallPending) {
             this.lastScoreCallPending = false;
-            this.callScore();
+            // Si Don Ganso se acaba de despertar, primero dice lo suyo.
+            if (this.venueFx.justWoke) this.time.delayedCall(1900, () => this.callScore());
+            else this.callScore();
           }
           if (e.attempt === 2) this.hud.kmh.setText(T.hud.secondServe);
           break;
@@ -431,7 +457,7 @@ export class MatchScene extends Phaser.Scene {
       } else if (ev.type === 'set') {
         banner(this, T.banners.set, UI.gold, 120);
       } else if (ev.type === 'match') {
-        this.call(T.calls.match(names[ev.winner]), 3000);
+        this.call(T.calls.match(names[ev.winner]), 3000, true);
         banner(this, T.banners.match, UI.gold, 150, 2200);
       } else if (ev.type === 'tiebreakStart') {
         this.time.delayedCall(900, () => banner(this, T.banners.tiebreak, UI.red));
@@ -451,8 +477,11 @@ export class MatchScene extends Phaser.Scene {
     else if (!(c.server === '0' && c.receiver === '0')) this.call(T.calls.points(c.server, c.receiver));
   }
 
-  private call(text: string, ms = 1500): void {
+  /** Canto de Don Ganso desde la silla (si está dormido no canta nada, salvo el final). */
+  private call(text: string, ms = 1500, force = false): void {
+    if (this.venueFx?.sleeping && !force) return;
     this.bubble.show(text, this.umpirePos.x, this.umpirePos.y, ms);
+    this.venueFx?.honk();
     sfx.call();
   }
 
@@ -504,13 +533,14 @@ export class MatchScene extends Phaser.Scene {
     const inHand = m.phase === 'preServe';
     this.ball.setTexture(this.fx.ballTexture() ?? (small ? 'ballFar' : 'ballNear'));
     this.ball.setPosition(Math.round(air.sx), Math.round(air.sy) - 1).setDepth(ground.sy + 0.6);
-    this.ball.setVisible(!inHand);
+    const hidden = inHand || this.venueFx.ballHidden;
+    this.ball.setVisible(!hidden);
     this.ballShadow
       .setPosition(Math.round(ground.sx), Math.round(ground.sy))
       .setDepth(ground.sy + 0.4)
       .setAlpha(Math.max(0.12, 0.42 - b.z * 0.05))
       .setScale(Math.max(0.5, 1 - b.z * 0.08), 1)
-      .setVisible(!inHand);
+      .setVisible(!hidden);
 
     // Estela para pelotas rápidas.
     const fast = m.phase === 'rally' && horizontalSpeed(b) > 17;
@@ -518,7 +548,7 @@ export class MatchScene extends Phaser.Scene {
     this.trailPos.length = 8;
     this.trail.forEach((t, i) => {
       const p = this.trailPos[(i + 1) * 2 - 1];
-      t.setVisible(fast && !!p);
+      t.setVisible(fast && !!p && !hidden);
       if (p) t.setPosition(Math.round(p.x), Math.round(p.y)).setDepth(ground.sy + 0.5).setAlpha(0.5 - i * 0.12);
     });
 
@@ -530,6 +560,111 @@ export class MatchScene extends Phaser.Scene {
 
     this.refreshHud();
     this.fx.render(dt);
+  }
+
+  // ------------------------------------------------------------------ diálogo (la pregunta del pickleball)
+
+  private startDialog(): void {
+    if (this.dialog) return;
+    this.dialog = {
+      stage: 'arrive',
+      t: 1.3,
+      sel: 0,
+      auto: this.setup.mode === 'demo',
+      choice: 0,
+      box: [],
+      opts: [],
+      cursor: null,
+      asker: new Bubble(this),
+      me: new Bubble(this),
+    };
+  }
+
+  private updateDialog(dt: number): void {
+    const d = this.dialog!;
+    const q = T.venues.events.pregunta;
+    d.t -= dt * (d.auto ? (this.setup.speed ?? 1) : 1);
+    if (d.stage === 'arrive') {
+      if (d.t > 0) return;
+      const head = this.venueFx.askerHead() ?? { x: 110, y: 190 };
+      d.asker.show(wrapText(q.ask, 200), head.x, head.y, 600000);
+      sfx.bip();
+      const g = this.add.graphics().setDepth(9700);
+      drawBox(g, 36, 262, 568, 70, 0x191826, UI.gold, 0.95);
+      d.opts = q.options.map((o, i) =>
+        pxText(this, 56, 269 + i * 15, o, { outline: true }).setDepth(9701),
+      );
+      d.cursor = pxText(this, 44, 269, '▶', { outline: true, color: UI.gold }).setDepth(9701);
+      d.box = [g, ...d.opts, d.cursor];
+      d.stage = 'choose';
+      // Si nadie contesta en un rato, contesta solo (con la más corta).
+      d.t = d.auto ? 2.4 : 14;
+      this.paintDialogSel();
+      return;
+    }
+    if (d.stage === 'choose') {
+      if (d.auto) {
+        if (d.t <= 0) this.chooseDialog(Math.floor(Math.random() * q.options.length));
+        return;
+      }
+      const n = q.options.length;
+      if (d.t <= 0) {
+        this.chooseDialog(n - 1);
+        return;
+      }
+      if (keyboard.anyPressed(['ArrowUp', 'KeyW', 'KeyI'])) {
+        d.sel = (d.sel + n - 1) % n;
+        sfx.bip();
+      }
+      if (keyboard.anyPressed(['ArrowDown', 'KeyS'])) {
+        d.sel = (d.sel + 1) % n;
+        sfx.bip();
+      }
+      this.paintDialogSel();
+      if (keyboard.anyPressed(['Enter', 'Space', 'KeyZ', 'KeyF', 'KeyK'])) this.chooseDialog(d.sel);
+      return;
+    }
+    if (d.stage === 'reply' && d.t <= 0) {
+      const head = this.venueFx.askerHead() ?? { x: 110, y: 190 };
+      d.me.hide();
+      d.asker.show(wrapText(q.answers[d.choice], 220), head.x, head.y, 600000);
+      d.stage = 'answer';
+      d.t = 3.2;
+      return;
+    }
+    if (d.stage === 'answer' && d.t <= 0) {
+      d.asker.destroy();
+      d.me.destroy();
+      this.venueFx.sendAskerAway();
+      this.say(pick(q.comment));
+      this.dialog = null;
+      this.acc = 0;
+    }
+  }
+
+  private paintDialogSel(): void {
+    const d = this.dialog!;
+    d.opts.forEach((t, i) => t.setTint(i === d.sel ? UI.gold : UI.white));
+    d.cursor?.setY(269 + d.sel * 15);
+  }
+
+  private chooseDialog(i: number): void {
+    const d = this.dialog!;
+    const q = T.venues.events.pregunta;
+    d.choice = i;
+    d.sel = i;
+    for (const o of d.box) o.destroy();
+    d.box = [];
+    d.opts = [];
+    d.cursor = null;
+    d.asker.hide();
+    // Contesta el de abajo (en 1P es el humano; en la demo, el CPU de abajo).
+    const p = this.match.players[0];
+    const at = project(p.x, p.y);
+    d.me.show(wrapText(q.options[i], 220), Math.round(at.sx), Math.round(at.sy) - 62, 600000);
+    sfx.ready();
+    d.stage = 'reply';
+    d.t = 2.2;
   }
 
   // ------------------------------------------------------------------ pausa y final

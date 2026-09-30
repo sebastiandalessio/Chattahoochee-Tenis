@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { CHARACTER_ORDER } from '../game/characters';
-import { DEFAULT_SETUP, type CharacterPick, type MatchSetup, type Mode } from '../game/setup';
+import { DEFAULT_SETUP, type CharacterPick, type MatchSetup, type Mode, type VenuePick } from '../game/setup';
 import { keyboard } from '../input/keyboard';
 import { T } from '../texts/es';
 import { pxText } from '../ui/pixelFont';
@@ -11,7 +11,7 @@ import { UI, drawBox, fullscreenButton } from '../ui/widgets';
 
 const MODES: Mode[] = ['cpu', '2p', 'demo'];
 const GAMES = [2, 4, 6] as const;
-const SURFACES = ['hard', 'clay', 'fast'] as const;
+const VENUE_PICKS: VenuePick[] = ['sorteo', 'breckenridge', 'springRidge', 'stRegis', 'chattahoochee'];
 const PICKS: CharacterPick[] = [...CHARACTER_ORDER, 'azar'];
 
 const ROW_Y0 = 120;
@@ -77,7 +77,7 @@ export class TestMenuScene extends Phaser.Scene {
       T.testMenu.mode,
       T.testMenu.length,
       T.testMenu.difficulty,
-      T.testMenu.surface,
+      T.testMenu.venue,
       m === '2p' ? T.testMenu.bottom2P : m === 'demo' ? T.testMenu.bottomDemo : T.testMenu.bottom,
       m === '2p' ? T.testMenu.top2P : T.testMenu.top,
     ];
@@ -85,7 +85,7 @@ export class TestMenuScene extends Phaser.Scene {
       T.testMenu.modes[MODES.indexOf(s.mode)],
       T.testMenu.lengths[GAMES.indexOf(s.games)],
       T.testMenu.difficulties[s.difficulty],
-      T.testMenu.surfaces[SURFACES.indexOf(s.surface)],
+      s.venue === 'sorteo' ? T.venues.random : T.venues.names[s.venue],
       this.pickName(s.chars[0]),
       this.pickName(s.chars[1]),
     ];
@@ -102,7 +102,7 @@ export class TestMenuScene extends Phaser.Scene {
     if (this.sel === 0) s.mode = cycle(MODES, s.mode);
     if (this.sel === 1) s.games = cycle(GAMES, s.games);
     if (this.sel === 2) s.difficulty = cycle([0, 1, 2] as const, s.difficulty);
-    if (this.sel === 3) s.surface = cycle(SURFACES, s.surface);
+    if (this.sel === 3) s.venue = cycle(VENUE_PICKS, s.venue);
     if (this.sel === 4) s.chars = [cycle(PICKS, s.chars[0]), s.chars[1]];
     if (this.sel === 5) s.chars = [s.chars[0], cycle(PICKS, s.chars[1])];
   }

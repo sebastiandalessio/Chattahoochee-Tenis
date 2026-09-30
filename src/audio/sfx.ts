@@ -149,6 +149,29 @@ export const sfx = {
   engine(): void {
     for (let i = 0; i < 6; i++) tone(70 + (i % 2) * 15, 0.1, 'sawtooth', 0.08, undefined, i * 0.1);
   },
+  /** El POC del pickleball (bajito, que es constante). */
+  poc(): void {
+    tone(640, 0.04, 'triangle', 0.035, 420);
+  },
+  whistle(): void {
+    tone(2600, 0.5, 'square', 0.05, 2900);
+    tone(2450, 0.5, 'square', 0.03, 2700, 0.02);
+  },
+  splash(): void {
+    burst(0.5, 0.5, 900, 0.5);
+    burst(0.3, 0.3, 2400, 0.8, 0.1);
+  },
+  sneeze(): void {
+    tone(700, 0.08, 'sawtooth', 0.06, 900);
+    burst(0.18, 0.5, 3000, 0.7, 0.1);
+  },
+  clank(): void {
+    tone(900, 0.08, 'square', 0.06, 700);
+    burst(0.12, 0.3, 2000, 2);
+  },
+  kick(): void {
+    tone(160, 0.08, 'sine', 0.2, 80);
+  },
   /** La cargada de cada uno tiene su sonidito. */
   taunt(who: string): void {
     if (who === 'elSeba') {

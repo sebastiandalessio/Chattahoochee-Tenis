@@ -160,3 +160,20 @@ export function measure(text: string, outline = false): number {
   }
   return Math.max(max, w) + (outline ? 2 : 0);
 }
+
+/** Parte un texto en renglones que no pasen de maxW píxeles (respeta los \n que ya tenga). */
+export function wrapText(text: string, maxW: number, outline = false): string {
+  const out: string[] = [];
+  for (const para of text.split('\n')) {
+    let line = '';
+    for (const word of para.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && measure(next, outline) > maxW) {
+        out.push(line);
+        line = word;
+      } else line = next;
+    }
+    out.push(line);
+  }
+  return out.join('\n');
+}

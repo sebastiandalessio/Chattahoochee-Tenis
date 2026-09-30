@@ -45,6 +45,8 @@ export interface CharacterArt {
   heads: { front: HeadGrid; back: HeadGrid; frontShout?: HeadGrid };
   outfits: Outfit[];
   racket: { frame: string; grip: string };
+  /** Extras que no juegan (guardavidas, mozo, chicos): sin raqueta. */
+  noRacket?: boolean;
   twoHandedBackhand?: boolean;
   taunt?: Pose[];
   portrait: (expr: Expression, outfit: Outfit) => PixelImage;

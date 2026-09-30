@@ -433,7 +433,7 @@ export function drawFrame(art: CharacterArt, outfit: Outfit, pose: Pose, view: '
   const rBehind = view === 'back' && !!pose.armRBehind;
   const lBehind = view === 'back' && (pose.twoHand ? !!pose.armRBehind : !!pose.armLBehind);
   const racket = pose.racket;
-  const hasRacket = racket !== null && racket !== undefined;
+  const hasRacket = racket !== null && racket !== undefined && !art.noRacket;
   // Al terminar el drive el brazo cruza por delante de la cara pero la raqueta queda detrás
   // del hombro: la raqueta va en la capa contraria a la del brazo.
   const racketBehind = hasRacket && (pose.racketOpposite ? view === 'front' || !rBehind : rBehind);

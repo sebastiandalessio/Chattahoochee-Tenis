@@ -6,6 +6,7 @@ import { preloadOverrides } from '../game/spriteTextures';
 import { keyboard } from '../input/keyboard';
 import { buildFonts } from '../ui/pixelFont';
 import { unlockAudio } from '../audio/sfx';
+import { isVenueId, type VenueId } from '../sim/venues';
 
 /** Genera fuentes y texturas, y arranca (el menú, o directo un partido si la URL lo pide). */
 export class BootScene extends Phaser.Scene {
@@ -24,7 +25,7 @@ export class BootScene extends Phaser.Scene {
     keyboard.install();
     unlockAudio();
 
-    // Atajos para pruebas automáticas: ?demo=1&speed=4&games=2&seed=5&p1=volpi&p2=angelito
+    // Atajos para pruebas automáticas: ?demo=1&speed=4&games=2&seed=5&p1=volpi&p2=angelito&venue=stRegis
     const q = new URLSearchParams(window.location.search);
     if (q.has('demo') || q.has('play')) {
       const pickOf = (v: string | null): CharacterPick =>
@@ -33,7 +34,7 @@ export class BootScene extends Phaser.Scene {
         mode: q.has('demo') ? 'demo' : 'cpu',
         games: (Number(q.get('games')) || 2) as 2 | 4 | 6,
         difficulty: (Number(q.get('diff') ?? 1) || 0) as 0 | 1 | 2,
-        surface: (q.get('surface') as MatchSetup['surface']) ?? 'hard',
+        venue: isVenueId(q.get('venue')) ? (q.get('venue') as VenueId) : 'sorteo',
         chars: [pickOf(q.get('p1')), pickOf(q.get('p2'))],
         speed: Number(q.get('speed')) || 1,
         seed: q.has('seed') ? Number(q.get('seed')) : undefined,
